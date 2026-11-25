@@ -185,6 +185,7 @@ function updateSliceButtons() {
 async function startSlice(queue, btn, model) {
     const body = { name: model || $('ap-model').value, profile: $('ap-profile').value || null, queue };
     const r = await busy(btn, 'Starting…', () => postJSON(api('/api/slicer/slice'), body));
+    if (window.Activity) Activity.refresh();
     if (!r.ok) { toast(`Couldn't start slicing: ${r.body.error || r.status}`, 'bad', 8000); return; }
     toast(`Slicing ${r.body.model}…`, 'info');
     await loadJobs();

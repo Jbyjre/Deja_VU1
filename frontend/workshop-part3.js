@@ -2,7 +2,7 @@
  * 2.0. Split out of the one closure workshop.js was (18 November 2026) so a session reads only the part it needs.
  * Loaded before workshop.js, after workshop-part2.js; it hands its names on through WorkshopPart3. Holds: ACTIONS,
  * DEVICE_KEY, HEAD_COUNT, PRESETS, PRESSABLE, SPRING, TRIGGERS, aiOn, cam, closeFile, closeMenu, closePeer,
- * conversionReport, currentTab, deviceId, deviceName, flip, flipbookVideo, gmenu, initBlobResize, initCameraForm,
+ * conversionReport, currentTab, deviceId, deviceName, flipbookVideo, gmenu, initBlobResize, initCameraForm,
  * initDemoTools, initDockStack, initGlassMenu, initHoldToCancel, initPressGlow, initScrollEdge, initSwap, lerp,
  * loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, localLines, morph, moveTabBlob,
  * openMenu, placeBlob, plateSummary, playWebRTC, pulseRefraction, renderGate, renderQuickActions, reportView,
@@ -119,6 +119,7 @@ function renderGate(gate) {
     $('confirm-body').innerHTML = `
       <div class="gate-banner ${gate.verdict}">${banner}</div>
       ${gate.blocking.length ? `<ul class="pf-list">${gate.blocking.map(b => `<li class="pf-error">${esc(b)}</li>`).join('')}</ul>` : ''}
+      ${(gate.fixes || []).length ? `<div class="gate-fixes" role="group" aria-label="Ways to fix this">${gate.fixes.map(f => `<button class="btn small" type="button" data-fix="${esc(f.kind)}"${f.model ? ` data-fix-model="${esc(f.model)}"` : ''}>${esc(f.label)}</button>`).join('')}</div>` : ''}
       ${gate.warnings.length ? `<ul class="pf-list">${gate.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
       ${gate.info.length ? `<ul class="pf-list">${gate.info.map(w => `<li class="pf-info">${esc(w)}</li>`).join('')}</ul>` : ''}
       ${gate.bed_check ? bedBlock(gate.bed_check) : ''}
@@ -438,13 +439,13 @@ function tlPrinterHTML(data) {
     return `<h3>On the printer</h3>${videos.length ? videos.map(v => {
       const job = tlJobFor(v);
       return `<div class="reg-row"><span class="reg-name">${esc(v.path.split('/').pop())}</span><span class="log-empty">${esc(tlWhen(v.modified))} · ${esc(tlSize(v.size))}</span>
-        <span class="tl-acts"><a class="btn small" href="${esc(api(`/api/timelapse/printer-video?root=${enc(v.root)}&path=${enc(v.path)}`))}" target="_blank" rel="noopener">Play</a>
+        <span class="tl-acts"><button class="btn small" type="button" data-play-video="${esc(api(`/api/timelapse/printer-video?root=${enc(v.root)}&path=${enc(v.path)}`))}" data-play-download="${esc(api(`/api/timelapse/printer-video?download=1&root=${enc(v.root)}&path=${enc(v.path)}`))}" data-play-name="${esc(v.path.split('/').pop())}">Play</button>
         <button class="btn small" type="button" data-keep-root="${esc(v.root)}" data-keep-path="${esc(v.path)}"${job ? ` disabled aria-busy="true" title="${esc(tlSize(job.bytes))} of ${esc(tlSize(job.total) || 'unknown size')}"` : ''}>${esc(tlKeepLabel(job))}</button></span></div>`;
     }).join('')
       : `<p class="log-empty">${(data.roots || []).length ? 'The printer has no recorded videos right now.' : 'This printer’s firmware lists no video folder. Deja Vu1’s own flipbooks above still work.'}</p>`}
       ${failed.map(j => `<p class="field-hint tl-failed" role="status">Not kept: ${esc(j.name)}. ${esc(j.error || '')}</p>`).join('')}
       ${(data.saved || []).length ? `<h3>Kept on this computer</h3>${data.saved.map(v => `<div class="reg-row"><span class="reg-name">${esc(v.name)}</span><span class="log-empty">${esc(tlSize(v.size))}</span>
-        <span class="tl-acts"><a class="btn small" href="${esc(api('/api/timelapse/video?name=' + enc(v.name)))}" target="_blank" rel="noopener">Play</a>
+        <span class="tl-acts"><button class="btn small" type="button" data-play-video="${esc(api('/api/timelapse/video?name=' + enc(v.name)))}" data-play-download="${esc(api('/api/timelapse/video?download=1&name=' + enc(v.name)))}" data-play-name="${esc(v.name)}">Play</button>
         <a class="btn small" href="${esc(api('/api/timelapse/video?download=1&name=' + enc(v.name)))}">Download</a>
         <button class="btn small" type="button" data-forget-video="${esc(v.name)}">Remove</button></span></div>`).join('')}` : ''}
       <p class="field-hint">The printer keeps only its latest recordings, so keep the ones you want. A video from a print that stopped early may not play if the printer never finished writing it; the flipbook of that print above still has its frames.</p>`;
@@ -502,6 +503,7 @@ async function tlKeep(btn) {
     if (r.body.job) tlPrinter.jobs = [r.body.job, ...tlPrinter.jobs.filter(j => j.id !== r.body.job.id)];
     tlDrawPrinter();
     tlWatchCopies();
+    if (window.Activity) Activity.refresh();
   }
 
 async function tlForget(btn) {
@@ -553,7 +555,6 @@ async function flipbookVideo(session, name, btn) {
     } finally { btn.disabled = false; btn.textContent = label; }
   }
 
-const flip = { frames: [], i: 0, timer: null };
 
 function initDemoTools() {
     qsa('#demo-speed [data-speed]').forEach(b => b.addEventListener('click', async () => {
@@ -925,7 +926,7 @@ function initBlobResize() {
     });
   }
   return { ACTIONS, HEAD_COUNT, PRESETS, SPRING, TRIGGERS, aiOn, closeFile, conversionReport, currentTab, deviceId,
-    flip, flipbookVideo, initBlobResize, initCameraForm, initDemoTools, initDockStack, initGlassMenu,
+    flipbookVideo, initBlobResize, initCameraForm, initDemoTools, initDockStack, initGlassMenu,
     initHoldToCancel, initPressGlow, initScrollEdge, initSwap, lerp, loadCamera, loadForecast, loadPrinterVideos,
     loadRuleLog, loadSideBySide, localLines, morph, moveTabBlob, openMenu, plateSummary, pulseRefraction,
     renderGate, renderQuickActions, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset };

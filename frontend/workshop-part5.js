@@ -4,7 +4,7 @@
  * checkHandoff, closeDialog, connect, convertFromCard, honourReducedMotion, init, initConfirm, initConverterCard,
  * initDialogs, initFiles, initFleet, initPhone, loadRules, loadTimelapse, nudgeLive, onEvent, onTab, openLocalFiles,
  * openPrinterMenu, playFlipbook, reconnect, refresh, renderFleet, ruleForm, selectPrinter, showSummary,
- * startPolling, uploadFiles
+ * startPolling, uploadFiles, watchLive
  */
 'use strict';
 const WorkshopPart5 = (() => {
@@ -12,11 +12,11 @@ const WorkshopPart5 = (() => {
     live, loadRegistry, money, printerName, qs, qsa, renderAttention, renderChip, ringSVG, showTest, since,
     tintRoom, wsState } = WorkshopPart1;
   const { LOCAL_MAX_BYTES, ar, files, kindOf, loadChamber, loadHealth, renderTwin } = WorkshopPart2;
-  const { ACTIONS, PRESETS, TRIGGERS, aiOn, closeFile, currentTab, deviceId, flip, flipbookVideo, initBlobResize,
+  const { ACTIONS, PRESETS, TRIGGERS, aiOn, closeFile, currentTab, deviceId, flipbookVideo, initBlobResize,
     initCameraForm, initDemoTools, initDockStack, initGlassMenu, initHoldToCancel, initPressGlow, initScrollEdge,
     initSwap, loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, morph, moveTabBlob,
     openMenu, renderGate, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset } = WorkshopPart3;
-  const { applyState, convertFile, loadFiles, loadQueue, openDialog, openFile, refreshPrinter, renderLocalFiles,
+  const { applyState, convertFile, loadFiles, loadQueue, openConfirm, openDialog, openFile, refreshPrinter, renderLocalFiles,
     startNext } = WorkshopPart4;
 
 function reconnect() {
@@ -44,9 +44,10 @@ function connect() {
     try { ws = new WebSocket(`${proto}://${location.host}/api/live?${params.join('&')}`); }
     catch (e) { startPolling(); return; }
     live.ws = ws;
-    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
+    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; live.heardAt = performance.now(); badge(); };
     ws.onmessage = (e) => {
       if (live.ws !== ws) return;
+      live.heardAt = performance.now();
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (!msg.type) { live.mode = 'off'; badge(); return; }          // {"connected":false,"demo":false}
@@ -77,6 +78,14 @@ function connect() {
 function nudgeLive() {
     if (!liveData() || tourOn() || document.hidden) return;
     if (live.mode !== 'ws' || (performance.now() - live.lastAt) > 5000) reconnect();
+  }
+
+  /* A link can die without the page being told (a router that dropped it, a computer that changed networks). The server
+   * sends a line at least every 20 seconds, so a page that has heard nothing for 50 seconds opens a new link. */
+  const LIVE_SILENT_MS = 50000;
+function watchLive() {
+    if (document.hidden || tourOn() || live.mode !== 'ws' || !live.ws) return;
+    if (performance.now() - (live.heardAt || 0) > LIVE_SILENT_MS) reconnect();
   }
 
   /* Fallback when a WebSocket can't be opened (an old proxy, a strict
@@ -341,9 +350,12 @@ function openLocalFiles(list) {
 async function uploadFiles(list) {
     if (serverMissing()) { openLocalFiles(list); return; }
     for (const file of list) {
-      const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file });
-      const body = await res.json().catch(() => ({}));
-      toast(res.ok ? `Added ${body.name}` : `Couldn't add ${file.name}: ${body.error || res.status}`, res.ok ? 'ok' : 'bad', 6000);
+      const act = window.Activity && Activity.add({ text: `Adding ${file.name} to your files`, go: 'files', label: 'Open Files' });
+      const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file }).catch(() => null);
+      const body = res ? await res.json().catch(() => ({})) : {};
+      const ok = !!(res && res.ok);
+      toast(ok ? `Added ${body.name}` : `Couldn't add ${file.name}: ${body.error || (res ? res.status : 'the server did not answer')}`, ok ? 'ok' : 'bad', 6000);
+      if (act) ok ? act.done(`Added ${body.name} to your files`) : act.fail(`Couldn't add ${file.name}`);
     }
     loadFiles();
   }
@@ -415,13 +427,39 @@ function initConfirm() {
     $('confirm-go').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       const name = wsState.confirmFile;
+      const where = printerName(currentPrinter) || 'the printer';
+      const act = window.Activity && Activity.add({ text: `Starting ${name} on ${where}`, go: 'printer', label: 'Open the Printer page' });
       const r = await runCommand(btn, '/api/printer/control/start', { filename: name, confirmed: true, bed_clear: !!($('confirm-bed-clear') && $('confirm-bed-clear').checked) }, {
         sending: 'Starting…', done: `Started ${name}`, failed: 'Start refused',
         expect: s => s.state === 'printing' && s.current_file === name,
       });
-      if (r.ok) { closeDialog($('confirm-dialog')); showTab('overview'); loadQueue(); }
+      if (act) r.ok ? act.done(`Started ${name} on ${where}`) : act.fail(`${where} did not start ${name}`);
+      // A started print is watched on the Printer page, where the twin draws this file.
+      if (r.ok) { closeDialog($('confirm-dialog')); goPlace('printer'); loadQueue(); }
       else if (r.result.body.gate) renderGate(r.result.body.gate);        // things changed: show why
     });
+    // Each refusal's fix (print_gate.py, "fixes") lands on the place that fixes it. None of them starts a print.
+    $('confirm-body').addEventListener('click', async e => {
+      const b = e.target.closest('[data-fix]');
+      if (!b) return;
+      const name = wsState.confirmFile, kind = b.dataset.fix;
+      if (kind === 'bed') { const t = $('confirm-bed-clear'); if (t) { t.scrollIntoView({ block: 'center' }); t.focus(); } return; }
+      if (kind === 'queue') {
+        const r = await runCommand(b, '/api/queue/add', { filename: name }, { sending: 'Adding…', done: `Added ${name} to the queue`, failed: 'Could not queue it' });
+        if (r.ok) { closeDialog($('confirm-dialog')); loadQueue(); goPlace('queue'); }
+        return;
+      }
+      closeDialog($('confirm-dialog'));
+      if (kind === 'slicer' && window.Slicer) Slicer.open(b.dataset.fixModel);
+      else if (kind === 'nozzle' && window.Finder) { goPlace('maintenance'); setTimeout(() => Finder.go('#swap-form'), 120); }
+      else goPlace('printer');
+    });
+  }
+
+/* Goes to one of the rail's places (rail.js), or to the old tab where the rail isn't there. */
+function goPlace(id) {
+    if (window.Rail && Rail.goDest) Rail.goDest(id);
+    else showTab({ printer: 'control', queue: 'files', maintenance: 'maintenance' }[id] || 'overview');
   }
 
 function ruleForm() {
@@ -571,7 +609,8 @@ function bindTimelapse(host) {
       if ((b = hit('[data-keep-path]'))) { if (!b.disabled) tlKeep(b); }
       else if ((b = hit('[data-forget-video]'))) tlForget(b);
       else if ((b = hit('[data-flip-video]'))) flipbookVideo(b.dataset.flipVideo, b.dataset.flipName, b);
-      else if ((b = hit('[data-flip]'))) playFlipbook(b.dataset.flip);
+      else if ((b = hit('[data-flip]'))) playFlipbook(b.dataset.flip, null, b.dataset.flipName);
+      else if ((b = hit('[data-play-video]')) && window.Player) Player.video(b.dataset.playVideo, { title: b.dataset.playName, download: b.dataset.playDownload });
     });
   }
 
@@ -605,33 +644,15 @@ async function loadTimelapse() {
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
         <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
-        <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
+        <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
         <button class="btn small" data-flip-video="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames > 1 && window.MediaRecorder ? '' : 'hidden'}>Save as video</button></span>
       </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>');
     loadPrinterVideos(host);
   }
-async function playFlipbook(session) {
-    const dialog = $('flip-dialog');
-    const data = await getJSON(api(`/api/timelapse/frames?session=${enc(session)}`));
-    if (!data.frames || !data.frames.length) { toast('No frames in that time-lapse yet', 'warn'); return; }
-    flip.frames = data.frames.map(n => {
-      const img = new Image();
-      img.src = api(`/api/timelapse/frame?session=${enc(session)}&name=${enc(n)}`);
-      return img;
-    });
-    flip.i = 0;
-    $('flip-sub').textContent = `${session} · ${flip.frames.length} frames, played at 12 per second in your browser`;
-    const scrub = $('flip-scrub');
-    scrub.max = flip.frames.length - 1;
-    const show = () => { $('flip-img').src = flip.frames[flip.i].src; scrub.value = flip.i; $('flip-count').textContent = `${flip.i + 1} / ${flip.frames.length}`; };
-    const play = () => { clearInterval(flip.timer); flip.timer = setInterval(() => { flip.i = (flip.i + 1) % flip.frames.length; show(); }, 1000 / 12); $('flip-play').textContent = 'Pause'; };
-    const stop = () => { clearInterval(flip.timer); flip.timer = null; $('flip-play').textContent = 'Play'; };
-    $('flip-play').onclick = () => (flip.timer ? stop() : play());
-    scrub.oninput = () => { stop(); flip.i = +scrub.value; show(); };
-    dialog.addEventListener('close', stop, { once: true });
-    show();
-    openDialog(dialog);
-    if (!REDUCED.matches) play(); else stop();
+/* Plays one flipbook in the time-lapse player (player.js): it stops at the last frame unless Loop is on. */
+function playFlipbook(session, printer, title) {
+    if (window.Player) return Player.frames(session, { printer: printer || undefined, title });
+    toast('The time-lapse player did not load. Reload the page and try again.', 'warn');
   }
 
 async function checkHandoff() {
@@ -742,8 +763,22 @@ function showSummary(event) {
       dialog.close();
       const data = await getJSON(api(`/api/timelapse?printer=${enc(event.printer)}`));
       const session = data.sessions && data.sessions[0];
-      if (session) playFlipbook(session.session); else toast('No time-lapse was recorded for this print', 'warn');
+      if (session) playFlipbook(session.session, event.printer, session.filename); else toast('No time-lapse was recorded for this print', 'warn');
     };
+    // The print's record, the same file again, and the next queued print: offered here, never started from here.
+    $('celebrate-record').onclick = () => { dialog.close(); goPlace('history'); if (window.Prints) Prints.load(); };
+    $('celebrate-again').onclick = e => { dialog.close(); openConfirm(s.file, e.currentTarget); };
+    const next = $('celebrate-next'), nextGo = $('celebrate-next-go');
+    next.hidden = nextGo.hidden = true;
+    getJSON(api(`/api/queue?printer=${enc(event.printer)}`)).then(q => {
+      const item = q && (q.items || []).find(i => i.status === 'queued');
+      if (!item || !dialog.open) return;
+      next.textContent = q.auto_advance
+        ? `Next in the queue for ${event.printer_name}: ${item.filename}. The automatic queue is on for this printer, so the queue moves on by itself.`
+        : `Next in the queue for ${event.printer_name}: ${item.filename}. It starts only when you start it.`;
+      next.hidden = nextGo.hidden = false;
+      nextGo.onclick = ev => { dialog.close(); openConfirm(item.filename, ev.currentTarget); };
+    }).catch(() => {});
     const pill = $('live-pill');
     openDialog(dialog, pill && !pill.hidden ? pill : null);
   }
@@ -815,5 +850,5 @@ function init() {
     setInterval(() => { if (liveData()) { loadHealth(); loadChamber(); } }, 15000);
     window.addEventListener('resize', () => moveTabBlob(currentTab()));
   }
-  return { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter };
+  return { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter, watchLive };
 })();

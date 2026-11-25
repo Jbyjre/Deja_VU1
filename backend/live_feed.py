@@ -42,9 +42,11 @@ import fleet
 import logbook
 import mock_moonraker
 import print_queue
+import print_record
 import timelapse
 
 TICK_SECONDS = 0.25
+QUIET_TICK_SECONDS = 2.0        # with no Deja Vu1 page open anywhere: one look every two seconds, not four a second
 DEMO_ACTIVE_SECONDS = 120
 CHAMBER_SAMPLE_SECONDS = 5
 CHAMBER_SAMPLES = 360          # 30 minutes at one sample per 5 s
@@ -277,6 +279,8 @@ def _detect_locked(printer_id, state, finish_event):
                                   "color": job["filament_color_hex"], "cost": cost}
             if not simulated and modules.is_enabled("filament_inventory"):
                 payload["filament"] = filament_inventory.deduct_after_print(job,printer_id=printer_id)
+        if side_effects and name in ("started",) + print_record.ENDED:
+            payload["record"] = _record_print(printer_id, name, state, finish_event, payload, simulated)
         if not simulated and modules.is_enabled("filament_inventory"):
             # Fix which roll each head has now, so the end of the print charges these rolls.
             if name == "started":
@@ -309,6 +313,38 @@ def _detect_locked(printer_id, state, finish_event):
         # button press - so an event can never slip past the rules.
         automations.evaluate(printer_id, state, set(events), demo_printer=simulated, slow_checks=False)
     return events, side_effects, simulated
+
+
+def _record_print(printer_id, name, state, finish_event, payload, simulated):
+    """
+    The print record (print_record.py): an entry opens when a print starts and is filled in when it ends, with the time-lapse
+    it got and, in the background, a camera picture of how it ended. Returns the entry's id, or None. A record that cannot be
+    written never stops the live readings.
+    """
+    try:
+        if name == "started":
+            with mock_moonraker.use_printer(printer_id):
+                job = mock_moonraker.get_current_job() or {}
+            return print_record.started(printer_id, mock_moonraker.printer_name(printer_id), state, job, simulated)["id"]
+        job = (finish_event or {}).get("job") if name == "finished" else None
+        cost = (payload.get("summary") or {}).get("cost")
+        entry = print_record.ended(printer_id, name, {**state, "printer_name": mock_moonraker.printer_name(printer_id)},
+                                   job, cost, timelapse.current_session(printer_id), simulated)
+    except Exception:
+        return None
+    if modules.is_enabled("camera"):
+        threading.Thread(target=_record_picture, args=(printer_id, entry["id"]), name="print-record-picture", daemon=True).start()
+    return entry["id"]
+
+
+def _record_picture(printer_id, entry_id):
+    """The camera's picture of the bed as the print ended, kept with the print's entry."""
+    try:
+        with mock_moonraker.use_printer(printer_id):
+            data, kind = mock_moonraker.camera_snapshot()
+        print_record.keep_picture(entry_id, data, kind)
+    except Exception:
+        pass                           # no camera, or it did not answer: the entry says it has no picture
 
 
 def _note_problems(printer_id, state, simulated):
@@ -483,6 +519,17 @@ def forget(printer_id):
     _refresh_fleet()
 
 
+def _pace():
+    """Four looks a second while someone watches; one every two seconds while nobody does (idle_stop.pages_open).
+    A print being recorded with no page open then costs almost nothing, and the readings are fresh again within two
+    seconds of a page opening."""
+    try:
+        import idle_stop
+        return TICK_SECONDS if idle_stop.pages_open() else QUIET_TICK_SECONDS
+    except Exception:                 # noqa: BLE001 - an unknown answer keeps the usual pace
+        return TICK_SECONDS
+
+
 def _loop():
     count = 0
     last = time.monotonic()
@@ -496,8 +543,12 @@ def _loop():
             import sys
             sys.stderr.write(f"  live feed tick failed: {exc}\n")
         last = now
-        count += 1
-        time.sleep(max(0.0, TICK_SECONDS - (time.monotonic() - now)))
+        pace = _pace()
+        # The count stays in quarter seconds, so "every fourth tick" and "about once a minute" keep their meaning.
+        # A quiet step lands on a multiple of itself, so those checks are still reached.
+        step = max(1, round(pace / TICK_SECONDS))
+        count = (count // step + 1) * step
+        time.sleep(max(0.0, pace - (time.monotonic() - now)))
 
 
 # Automation firings become live events as soon as this module is loaded,

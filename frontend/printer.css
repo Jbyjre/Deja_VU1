@@ -116,6 +116,65 @@
 .pcam-toggle:hover { background: rgba(0, 0, 0, .72); }
 .pcam-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pcam-note { margin-top: 8px; font-size: 12.5px; color: var(--text-dim); }
+/* the pop-out button on every camera view (camera-window.js opens the one floating window) */
+.pcam-pop {
+  position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; padding: 0; border-radius: 999px; cursor: pointer;
+  display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .25);
+}
+.pcam-pop svg { width: 16px; height: 16px; }
+.pcam-pop:hover { background: rgba(0, 0, 0, .72); }
+.pcam-pop:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ai-watch-cam .pcam-pop, .pcam-away .pcam-pop { display: none; }
+
+/* ---- the camera window: floats over every screen when pinned (tier 3 glass: small, freely floating) ------------- */
+.camwin {
+  position: fixed; z-index: 90; display: flex; flex-direction: column; min-width: 240px; min-height: 170px; overflow: hidden;
+  border-radius: 18px; color: var(--text); background: color-mix(in oklch, var(--m-tint-solid, #fff) 82%, transparent);
+  border: 1px solid var(--g-line-strong, rgba(0, 0, 0, .16));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .18), 0 14px 34px rgba(0, 0, 0, .3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7);
+}
+.camwin[hidden] { display: none; }
+.camwin.cw-moving { user-select: none; }
+.camwin-bar { display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 4px; flex: none; }
+.camwin-grip {
+  flex: 1; min-width: 0; min-height: 32px; padding: 0 8px; border: 0; border-radius: 9px; background: none; color: inherit;
+  text-align: left; cursor: grab; touch-action: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 600 13px/1 var(--font-sans);
+}
+.camwin.cw-moving .camwin-grip { cursor: grabbing; }
+.camwin-where { color: var(--text-dim); font-weight: 500; }
+.camwin-tools { display: flex; align-items: center; gap: 2px; flex: none; }
+.camwin-tools button {
+  min-width: 30px; height: 30px; padding: 0 6px; border: 0; border-radius: 8px; cursor: pointer; display: grid; place-items: center;
+  background: none; color: inherit; font: 600 13px/1 var(--font-sans);
+}
+.camwin-tools [data-cw="fit"] { min-width: 44px; font: 600 11px/1 var(--font-mono); color: var(--text-dim); }
+.camwin-tools button svg { width: 17px; height: 17px; }
+.camwin-tools button:hover:not(:disabled) { background: color-mix(in oklch, var(--text) 9%, transparent); }
+.camwin-tools button:disabled { opacity: .4; cursor: default; }
+.camwin-tools [aria-pressed="true"] { background: var(--accent); color: var(--on-accent, #fff); }
+.camwin :is(.camwin-grip, .camwin-tools button):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.camwin-cam { position: relative; flex: 1; min-height: 0; margin: 0 6px 6px; display: flex; flex-direction: column; }
+.camwin-cam .pcam-frame { flex: 1; min-height: 0; aspect-ratio: auto; border-radius: 12px; touch-action: none; }
+.camwin-cam .pcam-frame.cw-zoomed { cursor: grab; }
+.camwin-cam :is(.pcam-img, .pcam-video) {
+  transform: translate(var(--cw-x, 0), var(--cw-y, 0)) scale(var(--cw-zoom, 1)); transform-origin: center; will-change: transform;
+}
+.camwin-cam .pcam-note { margin: 6px 4px 0; font-size: 12px; flex: none; }
+.camwin-cam .pcam-frame:fullscreen { border-radius: 0; background: #000; }
+.camwin-size {
+  position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; touch-action: none; z-index: 2;
+  background: linear-gradient(135deg, transparent 55%, var(--g-line-strong, rgba(0, 0, 0, .3)) 55% 62%, transparent 62% 72%,
+    var(--g-line-strong, rgba(0, 0, 0, .3)) 72% 79%, transparent 79%);
+}
+@media (max-width: 599px) { .camwin { border-radius: 16px; } }
+@media (prefers-reduced-transparency: reduce) {
+  .camwin, html.has-shell .camwin { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--m-tint-solid, #fff); }
+}
+@media (prefers-contrast: more) {
+  .camwin, html.has-shell .camwin { border: 2px solid var(--text); }
+}
 
 /* ---- the printer page ------------------------------------------------------ */
 .pp-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

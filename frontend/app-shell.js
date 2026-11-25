@@ -602,7 +602,7 @@ const SECTIONS = {
     ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
       '#pp-outputs', '#pp-mesh', '#pp-macros', '#pp-console', '#pp-print', '#ctrl-plate']],
     ['live', 'Live readings', ['#telemetry', '#chamber-card']],
-    ['history', 'History & upkeep', ['#insights-card', 'ready to print', 'print cost']],
+    ['history', 'Prints & upkeep', ['#prints-card', '#insights-card', 'ready to print', 'print cost']],
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [

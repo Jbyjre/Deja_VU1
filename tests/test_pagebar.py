@@ -91,7 +91,8 @@ class ToolbarEdgeSource(unittest.TestCase):
         scripts = re.findall(r'<script src="([^"]+)"', INDEX)
         self.assertEqual(scripts[-1], "intro.js")
         self.assertEqual(scripts[-2], "rail.js")
-        self.assertEqual(scripts[-3], "pagebar.js")
+        self.assertEqual(scripts[-3], "activity.js")           # the Activity tray mounts in the frame pagebar.js built
+        self.assertEqual(scripts[-4], "pagebar.js")
         for name in ("panes.js", "deck.js", "cockpit.js", "overview.js", "settings.js", "strip.js"):
             self.assertLess(scripts.index(name), scripts.index("pagebar.js"), name)
         self.assertLess(scripts.index("deck.js"), scripts.index("cockpit.js"))

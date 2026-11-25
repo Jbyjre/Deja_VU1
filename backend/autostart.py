@@ -2,7 +2,12 @@
 autostart.py
 ============
 
-"Start Deja Vu1 when this computer starts", and keep it running. The dashboard
+Deja Vu1 no longer starts with the computer (24 November 2026): nothing of it should run while nobody uses it,
+on an 8 GB laptop above all. What is left here finds and removes the start-up entries that earlier versions made
+(retire(), called at every start and by an old 5-minute check that still fires), and the "stopped on purpose" note.
+set_on(True) is kept only so the tests can make an entry to remove; no route or screen calls it any more.
+
+What earlier versions made: "Start Deja Vu1 when this computer starts", and keep it running. The dashboard
 is then already running whenever its address or the installed app is opened,
 instead of showing the offline page because nobody started the launcher.
 
@@ -333,37 +338,22 @@ def refresh(platform=None, env=None, here=HERE, python=None, run=None):
     return current
 
 
+def retire(platform=None, env=None, run=None):
+    """Remove a start-with-the-computer entry an earlier version made. True when one was there."""
+    try:
+        if not status(platform, env, run).get("on"):
+            return False
+        set_on(False, platform, env, run=run)
+        return True
+    except (OSError, ValueError, KeyError):
+        return False
+
+
 def _remove(where):
     try:
         os.remove(where)
     except OSError:
         pass
-
-
-# ---- the person's own choice ---------------------------------------------------
-# Every start by hand switches starting with the computer on, unless the person
-# switched it off in Settings -> Desktop app; that choice is kept here.
-
-CHOICE = "autostart-choice.json"
-
-
-def remember_choice(data_dir, on):
-    import json
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-        with open(os.path.join(data_dir, CHOICE), "w", encoding="utf-8") as f:
-            json.dump({"on": bool(on), "at": time.time()}, f)
-    except OSError:
-        pass
-
-
-def chosen_off(data_dir):
-    import json
-    try:
-        with open(os.path.join(data_dir, CHOICE), encoding="utf-8") as f:
-            return json.load(f).get("on") is False
-    except (OSError, ValueError, AttributeError):
-        return False
 
 
 # ---- "stopped on purpose" ---------------------------------------------------

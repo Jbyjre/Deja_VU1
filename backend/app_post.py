@@ -14,6 +14,7 @@ import automations
 import backup
 import project_plates
 import logbook
+import print_record
 import camera
 import color_check
 import companion_sensor
@@ -162,8 +163,12 @@ class PostRoutes:
             body = self._read_json_body()
             if not self._this_computer():
                 return self._send_json({"error": "Change this on the computer that runs Deja Vu1"}, status=403)
-            autostart.remember_choice(storage.DATA_DIR, bool(body.get("on")))
-            return self._send_json(autostart.set_on(bool(body.get("on"))))
+            if body.get("on"):
+                return self._send_json({"error": "Deja Vu1 no longer starts with the computer or keeps running in "
+                                                 "the background. It starts when you open it and stops by itself "
+                                                 "when nobody uses it."}, status=410)
+            autostart.retire()
+            return self._send_json(autostart.status())
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":
@@ -514,6 +519,14 @@ class PostRoutes:
             entry = file_library.save(colour_map.mapped_name(file_library.clean_name(name)), data, origin="colours",
                                       note=f"{name} with its colours on the U1's heads ({report['summary']})")
             return self._send_json({"file": entry, "report": report})
+
+        if route in ("/api/prints/note", "/api/prints/settings", "/api/prints/forget"):
+            body = self._read_json_body()
+            if route == "/api/prints/note":
+                return self._send_json(print_record.set_note(body.get("id"), body.get("note")))
+            if route == "/api/prints/forget":
+                return self._send_json(print_record.forget(body.get("id")))
+            return self._send_json(print_record.set_settings(body.get("keep_days")))
 
         if route.startswith("/api/logbook"):
             if self._module_blocked("maintenance"):

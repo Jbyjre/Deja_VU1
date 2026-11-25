@@ -396,6 +396,7 @@
       if (!r.ok) return say(r.body.error || 'The install could not start', 'warn');
       state.engine = r.body; paintEngine(); engineButton();
       watchInstall();
+      if (window.Activity) Activity.refresh();
     });
     on(q('#sl-e-limit'), 'change', async ev => {
       const r = await postJSON('/api/slicer/settings', { timeout_s: Number(ev.target.value) });

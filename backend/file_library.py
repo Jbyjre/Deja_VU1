@@ -288,6 +288,14 @@ def thumbnail(name):
         return fh.read()
 
 
+def origins():
+    """Each file's origin and note from the index, without opening any file: {name: {"origin", "note"}}."""
+    with _lock:
+        index = _load_index()
+    return {n: {"origin": e.get("origin"), "note": e.get("note")} for n, e in index.items()
+            if os.path.isfile(os.path.join(FILES_DIR, n))}
+
+
 def list_files():
     with _lock:
         index = _load_index()

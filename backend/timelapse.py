@@ -141,6 +141,13 @@ def finish(printer_id):
         storage.save_json(path, meta, indent=None)
 
 
+def current_session(printer_id):
+    """The session the running print is recorded in, or None."""
+    with _lock:
+        info = _active.get(printer_id)
+        return info["session"] if info else None
+
+
 def is_recording(printer_id):
     return printer_id in _active
 

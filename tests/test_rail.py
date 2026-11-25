@@ -72,7 +72,7 @@ class TestPlaces(unittest.TestCase):
     def test_the_parts_of_printer_are_the_plans(self):
         printer = [d for d in DEST if d[2] == "printer"]
         self.assertEqual([d[1] for d in printer],
-                         ["Control", "Readings", "Camera & time-lapses", "History", "All printers", "Farm", "Practice printers"])
+                         ["Control", "Readings", "Camera & time-lapses", "Prints", "All printers", "Farm", "Practice printers"])
         self.assertIn("'printers', 'All printers', 'printer', 'fleet', 'printers', true", RAIL)    # a new group in the row
 
     def test_old_screen_names_still_resolve(self):
@@ -98,7 +98,8 @@ class TestPlaces(unittest.TestCase):
         scripts = re.findall(r'<script src="([^"]+)"', INDEX)
         self.assertEqual(scripts[-1], "intro.js")            # the opening scene borrows the twin once everything else is built
         self.assertEqual(scripts[-2], "rail.js")
-        self.assertEqual(scripts[-3], "pagebar.js")
+        self.assertEqual(scripts[-3], "activity.js")           # the Activity tray mounts in the frame pagebar.js built
+        self.assertEqual(scripts[-4], "pagebar.js")
         self.assertIn("(max-width: 720px)", RAIL)
         css = read("shell.css")
         self.assertIn("html.has-shell .rail, html.has-shell .rail-menu { display: none; }", css)

@@ -577,20 +577,20 @@ footer p { max-width: 70ch; }
         <div class="installs" id="install">
           <p class="install-lead"><b>Install in one paste.</b> Copy the block for your computer, paste it and press Enter. It downloads the newest release into Documents and starts it.</p>
           <div class="terminal">
-            <div class="term-bar"><span>Windows · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Set-Location $dest&#10;if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }">Copy</button></div>
+            <div class="term-bar"><span>Windows · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Set-Location $dest&#10;if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }">Copy</button></div>
             <pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }</code></pre>
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre>
           </div>
           <p class="install-note">No Python yet? Paste <code>winget install -e --id Python.Python.3.12</code> into PowerShell first, then close and reopen it.</p>
           <div class="terminal">
-            <div class="term-bar"><span>Mac, Linux, Raspberry Pi · paste into Terminal</span><button class="copy" type="button" data-copy="curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart">Copy</button></div>
+            <div class="term-bar"><span>Mac, Linux, Raspberry Pi · paste into Terminal</span><button class="copy" type="button" data-copy="curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background">Copy</button></div>
             <pre><code>curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre>
           </div>
           <p class="install-note">If a Mac asks to install the command line developer tools, click Install, then paste the block again: that is how macOS adds Python.</p>
           <p class="install-note"><b>No code?</b> Install <a href="https://www.python.org/downloads/">Python 3.8+</a>, download the <a href="https://github.com/Jbyjre/Deja_VU1/releases/latest">newest release ZIP</a> (or clone it with GitHub Desktop), and double-click the launcher. This website plays a demo recording; real readings need your own running copy.</p>

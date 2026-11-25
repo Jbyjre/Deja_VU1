@@ -81,6 +81,38 @@ class EveryMergeIsARelease(unittest.TestCase):
         decide = workflow.index('[marketing video]\'; then')
         self.assertLess(decide, workflow.index('python tools/next-release.py'))   # checked before any numbering
 
+    def test_the_waiting_stops_point_at_real_screens(self):
+        data = json.loads((ROOT / 'frontend/versions.json').read_text(encoding='utf-8'))
+        for h in (data.get('next') or {}).get('highlights') or []:
+            self.assertTrue(h['title'] and h['text'])
+            ident = h['target'][1:]
+            self.assertTrue(re.search(rf"""(id="{ident}"|id = '{ident}'|id='{ident}'|'{ident}')""", FRONTEND),
+                            f'{ident} is not on any screen')
+            if 'tab' in h:
+                self.assertIn(h['tab'], TABS)
+
+    def test_a_release_walks_through_every_spot_that_changed(self):
+        import datetime
+        import importlib.util
+        import shutil
+        import tempfile
+        spec = importlib.util.spec_from_file_location('next_release', ROOT / 'tools/next-release.py')
+        nr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nr)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'frontend').mkdir()
+            data = json.loads((ROOT / 'frontend/versions.json').read_text(encoding='utf-8'))
+            data['next'] = {'highlights': [
+                {'title': 'Prints', 'tab': 'control', 'target': '#prints', 'text': 'Every print, day by day.'},
+                {'title': 'Broken', 'target': 'no-hash', 'text': 'A stop without a place is left out.'}]}
+            (root / 'frontend/versions.json').write_text(json.dumps(data), encoding='utf-8')
+            shutil.copy(ROOT / 'CHANGELOG.md', root / 'CHANGELOG.md')
+            nr.write(root, nr.bump(app_updates.version(ROOT)), ['Prints'], datetime.date(2099, 1, 2))
+            after = json.loads((root / 'frontend/versions.json').read_text(encoding='utf-8'))
+            self.assertEqual([h['target'] for h in after['versions'][0]['highlights']], ['#prints', '#version-history'])
+            self.assertEqual(after['next']['highlights'], [])
+
     def test_next_release_writes_an_entry_the_version_tests_accept(self):
         import datetime
         import importlib.util
@@ -103,6 +135,7 @@ class EveryMergeIsARelease(unittest.TestCase):
             self.assertEqual((top['version'], top['name'], top['changes'], top['published']),
                              (new, 'Smoother updates', ['Smoother updates', 'A fix'], True))
             self.assertTrue(top['highlights'][0]['target'].startswith('#'))
+            self.assertEqual(top['highlights'][-1]['target'], '#version-history')
             log = (root / 'CHANGELOG.md').read_text(encoding='utf-8')
             self.assertIn(f'## {new} (2 January 2099): Smoother updates\n\n- Smoother updates\n- A fix\n', log)
             self.assertLess(log.index(f'## {new} '), log.index(f'## {HISTORY[0]["version"]} '))

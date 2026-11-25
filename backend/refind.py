@@ -79,10 +79,13 @@ def check(now=None, search=None, publish=None):
 
 
 def watch(stop_event=None, publish=None):
-    """The background loop, started with the server."""
+    """The background loop, started with the server. It looks only while a page is open: the wider search sweeps the
+    home network, and with nobody using Deja Vu1 there is no one to need the printer found (24 November 2026)."""
+    import idle_stop
     while not (stop_event and stop_event.is_set()):
         try:
-            check(publish=publish)
+            if idle_stop.pages_open():
+                check(publish=publish)
         except Exception as exc:          # noqa: BLE001 - a failed look must never stop the next one
             import console
             console.write(f"  looking for a moved printer failed: {exc!r}\n")

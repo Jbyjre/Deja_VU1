@@ -197,9 +197,8 @@ def _program(port):
 
 
 def _keeps_running():
-    """Whether Deja Vu1 runs without a window and comes back by itself (sign-in, wake, a stop)."""
+    """Whether Deja Vu1 runs without a window, stops by itself when unused, and no older entry starts it with the computer."""
     import autostart
-    import storage
     out = []
     if os.environ.get('DEJAVU_LAUNCHER') == '1' and os.environ.get('DEJAVU_BACKGROUND') != '1':
         out.append(_check('window', 'Window', 'note', 'Deja Vu1 runs inside a window here, so closing that window '
@@ -209,19 +208,14 @@ def _keeps_running():
         a = autostart.status()
     except Exception as exc:
         return out + [_check('autostart', 'Starts itself', 'note', f"Couldn't read it: {exc}")]
-    if not a.get('supported'):
-        return out
-    if a.get('on') and a.get('how') == 'task':
-        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in and after waking, and checked every '
-                          '5 minutes (Windows Task Scheduler)'))
-    elif a.get('on'):
-        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in' + (
-            ', and again if it stops with an error' if a.get('keeps_running') else '')))
-    elif autostart.chosen_off(storage.DATA_DIR):
-        out.append(_check('autostart', 'Starts itself', 'note', 'Off, as you chose', 'Settings > Desktop app'))
+    if a.get('on'):
+        out.append(_check('autostart', 'Starts itself', 'warn', 'An entry from an older version still starts Deja Vu1 '
+                          'with this computer', 'Start Deja Vu1 with its launcher once: it removes the entry'))
     else:
-        out.append(_check('autostart', 'Starts itself', 'note', 'Off: after a restart Deja Vu1 waits to be '
-                          'started', 'Settings > Desktop app > Start Deja Vu1 when this computer starts'))
+        import idle_stop
+        out.append(_check('autostart', 'Runs only when used', 'ok', f'Never starts with this computer, and stops by '
+                          f'itself {idle_stop.minutes():g} minutes after its last page closes, once nothing is under way. '
+                          'Open the dashboard to start it again'))
     return out
 
 
@@ -312,7 +306,8 @@ def render(rep, stream=None, windows=None, width=62):
     if rep['ready']:
         lines.append(f"  Open {rep['url']} in your browser.")
         if os.environ.get('DEJAVU_BACKGROUND_PARENT') or os.environ.get('DEJAVU_BACKGROUND'):
-            lines.append('  It keeps running after you close this window.')
+            lines.append('  You can close this window. Deja Vu1 stops by itself once no page has')
+            lines.append('  been open for a while and nothing is under way.')
         else:
             lines.append('  This copy runs inside this window: closing it stops Deja Vu1. Start it')
             lines.append('  with its double-click launcher instead and no window is needed.')

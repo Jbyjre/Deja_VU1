@@ -207,7 +207,48 @@ def slicer_path(settings=None):
     for candidate in candidates:
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate, "detected"
+    # Installed somewhere else, such as Windows' per-person programs folder or a Downloads folder: a copy the person
+    # already has is used before Deja Vu1 offers to download another one.
+    elsewhere = found_elsewhere()
+    if elsewhere:
+        return elsewhere, "detected"
     return "", "settings"
+
+
+FOUND_SECONDS = 300.0   # how long a look through the usual folders is trusted before the next one
+_found = {"at": None, "path": ""}
+_found_lock = threading.Lock()
+
+
+def _pick(paths):
+    """The program to use from those found: Snapmaker's own build first, since it carries the U1's profiles."""
+    usable = [p for p in paths if os.access(p, os.X_OK)]
+    return next((p for p in usable if "snapmaker" in p.lower()), usable[0] if usable else "")
+
+
+def found_elsewhere(fresh=False):
+    """A Snapmaker Orca or OrcaSlicer in the folders find_slicers looks through, or "". Nothing is run; the look reads
+    folder listings only, at most once every FOUND_SECONDS, so asking often costs nothing."""
+    now = time.monotonic()
+    with _found_lock:
+        if not fresh and _found["at"] is not None and now - _found["at"] < FOUND_SECONDS:
+            return _found["path"]
+    paths = []
+    for folder, _ in _search_places():
+        for entry in _listing(folder):
+            paths += _program_files(entry)
+    path = _pick(paths)
+    with _found_lock:
+        _found.update(at=now, path=path)
+    return path
+
+
+def own_engine():
+    """The slicer program in use when it is the person's own copy (found or chosen), not one Deja Vu1 installed."""
+    path, source = slicer_path()
+    if not path or source == "managed" or not os.path.isfile(path):
+        return None
+    return {"path": path, "source": source, "name": "Snapmaker Orca" if "snapmaker" in path.lower() else "OrcaSlicer"}
 
 
 MAX_FOUND = 12          # programs listed by find_slicers
@@ -304,6 +345,9 @@ def find_slicers(places=None):
                     "in_use": bool(current) and os.path.realpath(current) == real,
                 })
     found.sort(key=lambda f: (not f["in_use"], not f["runnable"], f["name"] != "Snapmaker Orca"))
+    if places is None:                  # a full look also refreshes what slicer_path falls back to
+        with _found_lock:
+            _found.update(at=time.monotonic(), path=_pick([f["path"] for f in found]))
     return {"found": found, "searched": sorted({label for _, label in (places if places is not None else _search_places())}),
             "current": current or None}
 
@@ -732,3 +776,5 @@ def reset():
         _traces.clear()
         _persist_locked()
         _save(_defaults())
+    with _found_lock:
+        _found.update(at=None, path="")

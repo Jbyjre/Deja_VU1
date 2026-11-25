@@ -213,6 +213,7 @@
 .qi-tools { display: flex; gap: 6px; margin-top: 8px; }
 
 /* Confirm Print. */
+.gate-fixes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .gate-bed { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 10px 0; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--hair)); }
 .gate-bed-map { width: 116px; height: 116px; flex: none; }
 .gate-bed-map .plate { fill: var(--well); stroke: var(--hair); stroke-width: 2; }
@@ -291,6 +292,16 @@
 .flip-controls { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .flip-controls input { flex: 1; accent-color: var(--accent); }
 .flip-count { font: 600 12px/1 var(--font-mono); color: var(--text-faint); min-width: 64px; text-align: right; }
+.flip-stage video { width: 100%; height: 100%; object-fit: contain; background: #0c1018; }
+#flip-dialog .flip-stage { max-height: calc(100dvh - 290px); min-height: 180px; width: 100%; }
+.flip-stage:fullscreen { border-radius: 0; aspect-ratio: auto; }
+.flip-controls.pl-more { flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.pl-field { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); min-height: 36px; }
+.pl-field select { min-height: 34px; height: 34px; padding-block: 0; }
+.pl-field input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--accent); }
+.pl-gap { flex: 1; }
+.pl-keys { margin: 10px 0 0; font-size: 12px; color: var(--text-faint); }
+@media (max-width: 720px) { .pl-gap { display: none; } .pl-keys { display: none; } }
 
 .celebrate { text-align: center; }
 .celebrate h2 { font-size: 22px; margin-top: 8px; }
@@ -303,6 +314,8 @@
 @keyframes ring-reveal { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
 .celebrate-stats { margin-top: 18px; text-align: left; }
 .celebrate-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.celebrate-next { margin: 14px 0 0; font-size: 14px; color: var(--text-dim); text-align: left; }
+.celebrate-actions { flex-wrap: wrap; }
 .celebrate-stats b { font: 700 17px/1.2 var(--font-mono); }
 .celebrate .dialog-actions { justify-content: center; }
 

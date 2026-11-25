@@ -19,11 +19,11 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
 
 - Scripts: `theme-boot.js` and `i18n.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
   `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
-  `workshop.js` → `studio.js` → `layer-stack.js` →
+  `workshop.js` → `player.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `errorhelp.js` →
-  `insights.js` → `printroom.js` → `gcode-view.js` → `slicer-model.js` → `slicer-scene.js` → `slicer-ui.js` → `slicer-prepare.js` → `slicer-keys.js` → `slicer-settings.js` → `slicer-filament.js` → `slicer-sets.js` → `slicer-help.js` → `slicer-sheet.js` → `slicer-path.js` → `slicer-preview.js` → `slicer.js` →
-  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  `insights.js` → `prints.js` → `printroom.js` → `gcode-view.js` → `slicer-model.js` → `slicer-scene.js` → `slicer-ui.js` → `slicer-prepare.js` → `slicer-keys.js` → `slicer-settings.js` → `slicer-filament.js` → `slicer-sets.js` → `slicer-help.js` → `slicer-sheet.js` → `slicer-path.js` → `slicer-preview.js` → `slicer.js` →
+  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `activity.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
   `guide.css` → `assistant.css` → `tester.css` → `errorhelp.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
@@ -323,6 +323,7 @@ repository) holds the reasons.
 | Frame | `#shell`, `shell.css` | Grid: sidebar, working surface (`main.wrap`). 8 px gutters. At 720 px and less the surface is the page and the dock is fixed at the bottom. |
 | Surface | `html.has-shell .wrap`, `shell-panes.css` | Paper, one shape. A `.card` inside it has no box: it is a cell with a hairline under it, its `h2` is a small mono-caps label, and `.card-head` is a 38 px row. Write cards as before; do not add backgrounds, borders or shadows to them. |
 | Toolbar edge | `#topbar`, `pagebar.js` | The place's name, its parts (`Rail.partsOf`), its buttons (`ACTIONS`), the search. Parts never open another place. |
+| Activity tray | `#act-btn` in `#topbar`, `activity.js` | Long jobs in words (slicing, the engine install, uploads, a print starting, time-lapse copies) with one button each to where they belong. It only reads; jobs that run in the page report with `Activity.add()`, the rest it asks the server about. |
 | Pane, divider | `panes.js` | `.pane` scrolls by itself; `.split` is a W3C window splitter. Put cards in a pane with `Panes.put`; give a new divider a name so Reset layout covers it. |
 | Stage | `.stage` | The main view that fills the space (the twin). Tiles dock around it. |
 | Tile, sheet | `cockpit.js`, `overview.js`, `deck.js`, `cockpit.css` | A tile is a glance (a few figures, one press); a sheet is the pop-up it opens, holding existing cards and bringing the twin and camera along. A screen that is a glance never scrolls. |

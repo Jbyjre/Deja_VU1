@@ -27,6 +27,7 @@ import filament_inventory
 import file_library
 import fleet
 import handoff
+import idle_stop
 import home_assistant_bridge
 import insights
 import led_status
@@ -44,6 +45,7 @@ import photo_studio
 import print_gate
 import print_preview
 import print_queue
+import print_record
 import printer_control
 import process_settings
 import project_plates
@@ -201,7 +203,7 @@ _APP_ROUTES = {
     "/api/assistant/chats": ("ai_assistant", lambda q: ai_assistant.chats()),
     "/api/assistant/thread": ("ai_assistant", lambda q: ai_assistant.view(_q(q, "id", "online-demo"), _q(q, "since", "0"))),
     "/api/app/watch-only": (None, lambda q: watch_only.status()),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(wait=False),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "idle_stop": idle_stop.status(),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
@@ -238,11 +240,49 @@ _APP_ROUTES = {
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
-    "/api/slicer/engine": ("auto_print", lambda q: engine_installer.status()),
+    "/api/slicer/engine": ("auto_print", lambda q: dict(engine_installer.status(), own=slicer_bridge.own_engine())),
     "/api/slicer/working": ("auto_print", lambda q: slicer_working.state()),
+    "/api/prints": (None, lambda q: _prints(q)),
+    "/api/prints/item": (None, lambda q: _print_item(q)),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
+
+
+def _record_history(q):
+    """The printer's own job history for the print record: a real printer's outside demo mode, a simulated one's in it."""
+    demo, connected = _demo(q), mock_moonraker.is_connected()
+    if demo == connected:
+        return None
+    try:
+        return mock_moonraker.get_print_history()
+    except Exception:
+        return None
+
+
+def _prints(q):
+    """The print record (FLOW.4): running, queued and ended prints for the selected printer's view, newest first."""
+    pid = mock_moonraker.selected_printer_id()
+    out = print_record.listing(_demo(q), _q(q, "q", ""), _record_history(q), pid, mock_moonraker.printer_name(pid), _q(q, "status", ""))
+    if _demo(q) != mock_moonraker.is_connected() and not _q(q, "q", "") and not any(
+            p["status"] == "running" and p["printer"] == pid for p in out["prints"]):
+        try:
+            now = print_record.seen_printing(pid, mock_moonraker.printer_name(pid), mock_moonraker.get_printer_state(),
+                                             mock_moonraker.get_current_job(), _demo(q))
+        except Exception:
+            now = None
+        if now:
+            out["prints"].insert(0, now)
+    out["queued"] = []
+    if modules.is_enabled("print_queue"):
+        out["queued"] = [{"file": i.get("filename"), "status": i.get("status"), "note": i.get("note"), "id": i.get("id")}
+                         for i in print_queue.get(pid).get("items", []) if i.get("status") in ("queued", "held")]
+    return out
+
+
+def _print_item(q):
+    pid = mock_moonraker.selected_printer_id()
+    return print_record.get(_q(q, "id"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
 
 
 def _tester_study(q):
@@ -405,6 +445,20 @@ class DejaVuServer(ThreadingHTTPServer):
         if isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
             return
         super().handle_error(request, client_address)
+
+
+class DualStackServer(DejaVuServer):
+    """
+    The same server listening on IPv6 and IPv4 at once. A browser asked for "localhost" may try IPv6 (::1) first;
+    with the server on IPv4 alone that try has to fail before the IPv4 one is made, and Windows is slow to report
+    that failure. Listening on both answers either at once. Where the system has
+    no IPv6, or refuses one socket for both, app.py falls back to IPv4 alone, as before.
+    """
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        DejaVuServer.server_bind(self)
 
 
 WRITE_GRACE = 20               # seconds a command already on its way to a printer may finish

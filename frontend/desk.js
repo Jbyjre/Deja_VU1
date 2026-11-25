@@ -306,7 +306,7 @@ window.FarmDesk = (() => {
         <div><dt>Cost per piece</dt><dd>${money(each)}</dd></div><div><dt>Print time</dt><dd>${fmtH(s.estimated_hours)}</dd></div>
         <div><dt>Plate brings in</dt><dd>${money(revenue)}</dd></div><div><dt>Margin</dt><dd>${revenue != null && total != null ? money(revenue - total) + (revenue ? ` · ${Math.round((revenue - total) / revenue * 100)}%` : '') : '—'}</dd></div>
         <div class="is-key"><dt>Per printer hour</dt><dd>${money(perHour)}</dd></div></dl>
-        <p class="dk-note">${note}Rates from Printer → History &amp; upkeep → Print cost. Labour, wear and failed prints are not included. Prices are kept in this browser.</p>`
+        <p class="dk-note">${note}Rates from Printer → Prints &amp; upkeep → Print cost. Labour, wear and failed prints are not included. Prices are kept in this browser.</p>`
       : '<p class="log-empty">Prices aren’t available right now. Reload the page and try again.</p>';
   }
 

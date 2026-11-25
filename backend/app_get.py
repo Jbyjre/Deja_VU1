@@ -17,6 +17,7 @@ import live_feed
 import mock_moonraker
 import modules
 import pairing
+import print_record
 import printer_control
 import sandbox
 import timelapse
@@ -241,6 +242,10 @@ class GetRoutes:
                 return self._send_stream(status, ctype, chunks, length=headers.get("content-length"), extra=extra,
                                          filename=name if download else None)
 
+        if route == "/api/prints/picture":
+            data, ctype = print_record.picture(_q(query, "id"))
+            return self._send_bytes(data, ctype, cache=True)
+
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):
                 return None
@@ -392,6 +397,9 @@ class GetRoutes:
                                                    "t": snap["t"], **tag_for(current)}))
                 if time.time() - last_ping > 20:
                     conn.ping()
+                    # A ping is answered by the browser itself and never reaches the page's code. This line does,
+                    # so a page that has heard nothing for a minute knows its link is dead and opens a new one.
+                    conn.send_text('{"type":"alive"}')
                     last_ping = time.time()
         except (websocket.ConnectionClosed, OSError):
             pass

@@ -58,7 +58,7 @@
     ['printer', 'Control', 'printer', 'control', 'control'],
     ['readings', 'Readings', 'printer', 'control', 'live'],
     ['camera', 'Camera & time-lapses', 'printer', 'control', 'camera'],
-    ['history', 'History', 'printer', 'control', 'history'],
+    ['history', 'Prints', 'printer', 'control', 'history'],
     ['printers', 'All printers', 'printer', 'fleet', 'printers', true],
     ['desk', 'Farm', 'printer', 'fleet', 'desk'],
     ['sandbox', 'Practice printers', 'printer', 'fleet', 'sandbox'],

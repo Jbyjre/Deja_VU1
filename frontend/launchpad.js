@@ -11,12 +11,12 @@
   const dialog = $('setup-dialog'), content = $('setup-content');
   let step = 0, mode = 'real', info = null, returnFocus = null, activeTarget = null, generation = 0;
   // The printer step: what was typed (kept when the step redraws), the printer once it is added, and a note for the next step.
-  let typedUrl = '', added = '', carry = '', connecting = null;
+  let typedUrl = '', added = '', carry = '', connecting = null, searched = false, engine = null, engineWatch = 0, benchy = true, aiAfter = false;
   // Every step is full screen. The tour step hands over to the guided tour
   // (guide.js), which points at the real dashboard, then comes back here.
   // A phone opens the dashboard of the computer that runs Deja Vu1, so it skips the steps about the computer
   // (showing a code for a phone, the desktop app, updates) and gets the Home Screen step instead.
-  const COMPUTER_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Your phone', 'Desktop app', 'Keep up to date'];
+  const COMPUTER_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'Slicing engine', 'Your AI', 'The tour', 'Your phone', 'Desktop app', 'Keep up to date'];
   const PHONE_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Home Screen'];
   const onPhone = () => matchMedia('(max-width: 720px)').matches && matchMedia('(pointer: coarse)').matches;
   let names = COMPUTER_STEPS, TOUR = names.indexOf('The tour');
@@ -180,14 +180,14 @@
       $('setup-demo').onclick=()=>{mode='demo';setDemo(true);render();};
       $('setup-real').onclick=()=>{mode='real';setDemo(false);render();};
       if ($('setup-find')) $('setup-find').onclick = async e => {
-        const btn=e.currentTarget;btn.disabled=true; $('setup-status').textContent='Looking on your home network…';
+        const btn=e.currentTarget||$('setup-find');btn.disabled=true;searched=true; $('setup-status').textContent='Looking on your home network…';
         try {
           const r=await postJSON('/api/printers/discover',{}); if(!r.ok)throw new Error(r.body.error);
           if(view!==generation)return;
           const found=r.body.printers||[];
           $('setup-found').replaceChildren();
           found.forEach(p=>{const b=document.createElement('button');b.className='btn';b.type='button';b.textContent=p.name||p.ip;b.onclick=()=>{$('setup-url').value=`http://${p.ip}:${p.port}`;};$('setup-found').append(b);});
-          $('setup-status').textContent=found.length?'Choose a printer, then test the connection.':'No printers found. You can enter the printer address yourself.';
+          $('setup-status').textContent=found.length?'Choose a printer, then test the connection.':'No printers found. The U1 joins 2.4 GHz Wi-Fi only: if your router names its 2.4 GHz and 5 GHz networks apart, put the printer on the 2.4 GHz one, with this computer on the same router. You can also enter the printer address yourself.';
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not search. Try entering the address yourself.';} finally{btn.disabled=false;}
       };
       if ($('setup-url')) {
@@ -196,6 +196,18 @@
         $('setup-url').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); connectPrinter(); } });
       }
       if ($('setup-test')) $('setup-test').onclick = () => connectPrinter();
+      // Look for the printer straight away the first time this step opens, so the usual case is one press.
+      if ($('setup-find') && !searched && !tourOn() && !serverMissing()) $('setup-find').onclick({ currentTarget: $('setup-find') });
+    } else if (names[step] === 'Slicing engine') {
+      renderEngine(view);
+    } else if (names[step] === 'Your AI') {
+      content.innerHTML = `<h2 id="setup-title">An AI of your own, if you want one.</h2>
+        <p class="setup-lead">Deja Vu1 works fully without one. With your own AI connected, it can explain errors in plain words, watch a print through the camera and answer questions about your printer.</p>
+        <ul class="setup-points"><li><strong>Your key, your account:</strong> it stays on this computer and is only sent to the AI you choose.</li><li><strong>Nothing happens behind your back:</strong> anything that would move or start a printer still waits for you.</li></ul>
+        <div class="setup-choices"><button class="btn" type="button" id="setup-ai" ${tourOn() || serverMissing() ? 'disabled' : ''}>Set up an AI after this</button></div>
+        <p class="field-hint">Skip this if you are not sure. The AI screen in the sidebar connects one any time.</p>`;
+      $('setup-ai').onclick = () => { aiAfter = true; $('setup-ai').textContent = 'The AI screen opens when you finish'; $('setup-ai').disabled = true; };
+      if (aiAfter) { $('setup-ai').textContent = 'The AI screen opens when you finish'; $('setup-ai').disabled = true; }
     } else if (step === TOUR) {
       content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
         <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
@@ -220,15 +232,12 @@
           <div class="setup-way"><strong>Install it as an app</strong><span>An icon in the Start menu or Dock and its own window, from Chrome or Edge.</span><button class="btn primary" id="setup-install">Install Deja Vu1</button></div>
           <div class="setup-way"><strong>Open as a window at start</strong><span>The launcher opens a window with no tabs or address bar.</span><button class="btn" id="setup-window">Use an app window</button></div>
           <div class="setup-way"><strong>Keep the browser tab</strong><span>Nothing changes. It opens in your usual browser.</span></div>
-          <div class="setup-way"><strong>Start with this computer</strong><span>Deja Vu1 starts when you sign in, so the dashboard is always ready to open.</span><button class="btn" id="setup-autostart">Start it with this computer</button></div>
+          <div class="setup-way"><strong>Only while you use it</strong><span>Deja Vu1 never starts with this computer. It stops by itself a few minutes after its last page closes, so nothing of it runs while you are not using it.</span></div>
         </div>
         <p class="field-hint" id="setup-desktop-note">${esc(installHelp())}</p>`;
       $('setup-install').onclick=()=>install($('setup-desktop-note'));
       $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
-      const auto=info&&info.autostart;
-      $('setup-autostart').onclick=async()=>{await saveAutostart(true);const on=!!(info&&info.autostart&&info.autostart.on);$('setup-autostart').textContent=on?'Starts with this computer':'Start it with this computer';$('setup-autostart').disabled=on;};
-      if(auto&&auto.on){$('setup-autostart').textContent='Starts with this computer';$('setup-autostart').disabled=true;}
-      if(tourOn()||serverMissing()||!auto||!auto.supported){$('setup-install').disabled=tourOn()||serverMissing();$('setup-window').disabled=tourOn()||serverMissing();$('setup-autostart').disabled=true;}
+      if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
     } else if (names[step] === 'Home Screen') {
       content.innerHTML=`<h2 id="setup-title">Keep it on your Home Screen.</h2>
         <p class="setup-lead">This phone shows the dashboard of the computer that runs Deja Vu1. No app store and no account. Put it on your Home Screen to open it like an app.</p>
@@ -238,17 +247,81 @@
       const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
         <p class="setup-lead">This is Deja Vu1 <strong>v${esc(Versions.installed()||'?')}</strong>. ${esc(tourOn()||serverMissing()?'Updates belong to the copy on your own computer.':kind)}</p>
+        ${tourOn()||serverMissing()?'':`<label class="setup-check"><input type="checkbox" id="setup-benchy" ${benchy?'checked':''}> Open the sample 3DBenchy in the Slicer when I finish</label>`}
         <label class="setup-check setup-check-big"><input type="checkbox" id="setup-auto" ${info&&info.automatic?'checked':''} ${tourOn()||serverMissing()?'disabled':''}> Look for updates by itself</label>
         <p>When an update is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, and puts the old version back if the new one won’t start.</p>
         <details class="setup-more"><summary>More about updates</summary><p>Deja Vu1 makes a safety copy before it installs anything, then restarts itself. Settings can let updates install on their own while every printer is idle. Start Deja Vu1 with its double-click launcher so it can restart after an update.</p><p class="field-hint">Checking sends GitHub no name, printer details or settings. Settings → Version &amp; updates lists every version and has a tour of each. Printer firmware updates are separate and come from Snapmaker.</p></details>`;
+      if($('setup-benchy'))$('setup-benchy').onchange=e=>{benchy=e.target.checked;};
       $('setup-auto').onchange=async e=>{const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(!r.ok){e.target.checked=!e.target.checked;$('setup-status').textContent=r.body.error||'Could not save that.';}else{info={...info,...r.body};Versions.refresh();}};
     }
     $('setup-status').textContent=carry;carry='';
     const title=$('setup-title');title.tabIndex=-1;title.focus({preventScroll:true});
   }
+  /* The slicing engine step: what is on this computer, and one press to install Snapmaker's engine. The install keeps
+     running if setup moves on; the Slicer's own engine card shows it too. */
+  async function renderEngine(view) {
+    if (tourOn() || serverMissing()) {
+      content.innerHTML = `<h2 id="setup-title">The slicing engine.</h2><p class="setup-lead">On your own computer, Deja Vu1 installs Snapmaker’s official slicing engine for you here, so models turn into prints without a second app.</p>`;
+      return;
+    }
+    content.innerHTML = `<h2 id="setup-title">Turn models into prints.</h2><p class="setup-lead">The Slicer uses Snapmaker’s official slicing engine, Snapmaker Orca, run as a separate program. If it is already on this computer, Deja Vu1 uses that copy; if not, it can download it for you.</p><div id="setup-engine" aria-live="polite"><p class="field-hint">Checking this computer…</p></div>`;
+    try { engine = await getJSON('/api/slicer/engine'); } catch (e) { engine = { error: e.message || 'The engine could not be checked.' }; }
+    if (view !== generation) return;
+    paintEngineStep(view);
+  }
+  function paintEngineStep(view) {
+    const box = $('setup-engine'), e = engine || {};
+    if (!box || view !== generation) return;
+    const job = e.job, running = job && job.state === 'running', inst = e.installed;
+    let html;
+    if (e.error) html = `<p class="setup-note">${esc(e.error)} The Slicer can install it later.</p>`;
+    else if (running) {
+      const pct = Math.round((job.progress || 0) * 100);
+      html = `<p class="setup-note">Installing… ${pct}%. You can carry on: it keeps going, and the Slicer says when it is ready.</p><div class="sl-bar" role="progressbar" aria-label="Engine install" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`;
+    } else if (inst) html = `<p class="setup-note">Ready: ${esc(inst.app || 'Snapmaker Orca')} ${esc(inst.engine_version || inst.version || '')} is installed and checked.</p>`;
+    else if (e.own) html = `<p class="setup-note">Ready: Deja Vu1 uses the ${esc(e.own.name)} already on this computer, so there is nothing to install.</p><p class="field-hint">${esc(e.own.path)}</p>`;
+    else if (!e.supported) html = `<p class="setup-note">${esc(e.reason || 'Deja Vu1 cannot install the engine on this computer.')} In the Slicer, “Use my own Snapmaker Orca” points it at a copy you installed yourself.</p>`;
+    else {
+      const failed = job && job.state === 'failed' ? `<p class="setup-note" role="alert">${esc(job.error)}</p>` : '';
+      html = `${failed}<div class="setup-choices"><button class="btn primary" type="button" id="setup-engine-go">${(e.offer || {}).size_words ? `Install the engine (${esc(e.offer.size_words)})` : 'Install the engine'}</button></div>
+        <p class="field-hint">A download from Snapmaker’s own GitHub release, checked before it runs. Skip it and the Slicer offers it again.</p>`;
+    }
+    box.innerHTML = html;
+    const go = $('setup-engine-go');
+    if (go) go.onclick = async () => {
+      go.disabled = true; go.textContent = 'Starting…';
+      const r = await postJSON('/api/slicer/engine/install', {});
+      if (view !== generation) return;
+      if (!r.ok) { engine = { ...engine, job: { state: 'failed', error: r.body.error || 'The install could not start.' } }; paintEngineStep(view); return; }
+      engine = r.body; paintEngineStep(view); watchEngine(view);
+      if (window.Activity) Activity.refresh();
+    };
+    if (running) watchEngine(view);
+  }
+  function watchEngine(view) {
+    if (engineWatch) return;
+    engineWatch = setInterval(async () => {
+      if (view !== generation || !dialog.open) { clearInterval(engineWatch); engineWatch = 0; return; }
+      const next = await getJSON('/api/slicer/engine').catch(() => null);
+      if (!next || view !== generation) return;
+      engine = next;
+      paintEngineStep(view);
+      if (!(next.job && next.job.state === 'running')) { clearInterval(engineWatch); engineWatch = 0; }
+    }, 1000);
+  }
+  /* What the last step asked for, once setup has closed: the sample Benchy on the Slicer's plate, AI settings. */
+  async function afterSetup() {
+    if (aiAfter && !tourOn()) { showTab('ai'); return; }
+    if (!benchy || tourOn() || serverMissing() || !window.Slicer || onPhone()) return;
+    try {
+      const list = (await getJSON('/api/files')).files || [];
+      if (!list.some(f => f.name === '3dbenchy.stl')) await postJSON('/api/files/samples', {});
+      await Slicer.open('3dbenchy.stl');
+    } catch (e) { toast(`The sample could not be opened: ${e.message || e}`, 'warn'); }
+  }
   function open() {
     returnFocus=document.activeElement;step=0;mode=tourOn()?'demo':'real';
-    names=(onPhone()?PHONE_STEPS:COMPUTER_STEPS).slice();if(wantsLanguage())names.unshift('Language');TOUR=names.indexOf('The tour');typedUrl='';added='';carry='';skipFor='';
+    names=(onPhone()?PHONE_STEPS:COMPUTER_STEPS).slice();if(wantsLanguage())names.unshift('Language');TOUR=names.indexOf('The tour');typedUrl='';added='';carry='';skipFor='';searched=false;aiAfter=false;benchy=true;
     dialog.showModal();render();refreshInfo();
   }
   $('setup-replay').onclick=open;
@@ -265,7 +338,7 @@
       }
     }
     if(names[step]==='Language'&&window.I18n&&!I18n.chosen())I18n.choose(I18n.lang());
-    if(step===names.length-1)finish();else{step++;render();}
+    if(step===names.length-1){const last=names[step]==='Keep up to date';finish();if(last)afterSetup();}else{step++;render();}
   };
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
@@ -333,25 +406,26 @@
     $('da-window-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !d ? 'Loading…'
       : d.window_browser ? `The app window uses ${d.window_browser}, found on this computer. Applies the next time you start the launcher.`
       : 'Neither Edge nor Chrome was found on this computer, so an app window would open as a normal tab.';
-    const a = info && info.autostart, box = $('da-autostart');
-    box.disabled = offline || !a || !a.supported;
-    box.checked = !!(a && a.on);
-    $('da-autostart-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !a ? 'Loading…'
-      : !a.supported ? 'This system has no sign-in start list Deja Vu1 knows how to use.'
-      : a.on && a.how === 'task' ? 'On. Windows starts Deja Vu1 when you sign in and after the computer wakes, and checks every 5 minutes that it is running, all without a window. Settings › Version & updates › Stop keeps it stopped until you start it again or restart the computer.'
-      : a.on && a.keeps_running ? 'On. Deja Vu1 starts when you sign in, without a window, and macOS starts it again if it stops with an error.'
-      : a.on ? 'On. Deja Vu1 starts when you sign in, without opening a browser; open the dashboard or the installed app when you want it.' + (a.note ? ' ' + a.note : '')
-      : 'Off. After a restart, Deja Vu1 waits until you start it: the offline page has a Start button for that.';
+    $('da-autostart-note').textContent = offline ? 'Belongs to the copy on your own computer.' : stopWords(info && info.idle_stop);
   }
-  async function saveAutostart(on) {
-    const r = await postJSON('/api/app/autostart', { on });
-    if (!r.ok) { toast(r.body.error || 'Could not change that setting', 'bad'); renderDesktop(); return; }
-    if (info) info.autostart = r.body;
-    toast(on ? 'Deja Vu1 will start when this computer starts' : 'Deja Vu1 will no longer start with this computer', 'ok', 6000);
-    renderDesktop();
+  /* In words: when this copy stops by itself, or why it is still running. */
+  function stopWords(s) {
+    if (!s) return 'Deja Vu1 stops by itself when nobody has used it for a while.';
+    if (!s.started_by_launcher) return 'This copy was started by hand (python3 backend/app.py), so it runs until its window closes.';
+    const n = s.minutes;
+    if (s.busy && s.busy.length) {
+      const what = s.busy.join(', ');
+      return n === 1 ? `Still running for ${what}; it stops by itself 1 minute after that ends and no page is open.`
+        : `Still running for ${what}; it stops by itself ${n} minutes after that ends and no page is open.`;
+    }
+    if (s.stops_in_seconds != null) {
+      const left = Math.max(1, Math.round(s.stops_in_seconds / 60));
+      return left === 1 ? 'No page is open, so it stops by itself in about a minute.'
+        : `No page is open, so it stops by itself in about ${left} minutes.`;
+    }
+    return n === 1 ? 'It stops by itself 1 minute after its last page closes.' : `It stops by itself ${n} minutes after its last page closes.`;
   }
   $('da-install').onclick = () => install();
-  $('da-autostart').onchange = e => saveAutostart(e.target.checked);
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();
   window.DesktopApp = { install, help: installHelp, canPrompt: () => !!installEvent, standalone };
@@ -366,8 +440,12 @@
     if (d && d.open_as === 'window') return;
     if (offerBusy()) { if ((tries || 0) < 6) setTimeout(() => offerDesktop((tries || 0) + 1), 10000); return; }
     save(OFFER_KEY, '1');
-    toast('Deja Vu1 can open in its own window instead of a browser tab.', 'info', 15000, {
-      action: { label: 'See how', run: () => { location.hash = '#/settings'; setTimeout(() => window.Settings && Settings.search('desktop app'), 400); } }
+    // Where the browser can install it straight away, the one button does that; elsewhere it shows the Desktop app settings.
+    const ready = !!installEvent;
+    toast(ready ? 'Deja Vu1 can be installed as an app: its own window and an icon, same dashboard.'
+      : 'Deja Vu1 can open in its own window instead of a browser tab.', 'info', 15000, {
+      action: ready ? { label: 'Install', run: () => install() }
+        : { label: 'See how', run: () => { location.hash = '#/settings'; setTimeout(() => window.Settings && Settings.search('desktop app'), 400); } }
     });
   }
   const connNow = $('conn');

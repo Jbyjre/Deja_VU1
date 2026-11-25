@@ -179,7 +179,7 @@ async function walk(browser, server, shots) {
   /* Parts: Printer has seven, a part never opens another place, and All printers is a part of Printer. */
   await go(page, 'printer');
   const parts = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));
-  check(JSON.stringify(parts) === JSON.stringify(['Control', 'Readings', 'Camera & time-lapses', 'History', 'All printers', 'Farm']), 'Printer has its parts in the toolbar edge, without Practice printers: ' + parts.join(' | '));
+  check(JSON.stringify(parts) === JSON.stringify(['Control', 'Readings', 'Camera & time-lapses', 'Prints', 'All printers', 'Farm']), 'Printer has its parts in the toolbar edge, without Practice printers: ' + parts.join(' | '));
   await page.evaluate(() => Rail.setPractice(true));
   await page.waitForTimeout(250);
   const withPractice = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));

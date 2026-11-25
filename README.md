@@ -110,11 +110,12 @@ same block again any time to repair the app; your settings and files stay put.
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
    Set-Location $dest
-   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
    ```
 
-You can close PowerShell afterwards: Deja Vu1 keeps running and starts by itself when you sign in
-(**Settings → Desktop app** turns that off).
+You can close PowerShell afterwards. Deja Vu1 stops by itself once no page has been open for 5 minutes
+and nothing is under way, so no Python is left running; open the dashboard again and press **Start**.
+[How Deja Vu1 runs](docs/how-it-runs.md) says what it runs on, what runs and when, and what it needs from your computer.
 
 ### Mac or Linux: paste into Terminal
 
@@ -123,7 +124,7 @@ Open **Terminal** (Cmd + Space, type `Terminal`, press Enter), paste this block 
 ```bash
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 
 ```
 
@@ -199,14 +200,14 @@ Windows:
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
 ```
 
 Mac and Linux:
 
 ```bash
 [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 ```
 
 </details>
@@ -239,7 +240,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
   the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
   Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
   Backup restore and an update install.
-- **Automated:** 2030 tests passed on Python 3.13 (23 November 2026). GitHub Actions
+- **Automated:** 2101 tests passed on Python 3.13 (24 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
   Snapmaker Orca v2.4.1 on Linux and Windows.
@@ -281,7 +282,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 2030 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2101 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

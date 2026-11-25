@@ -5,8 +5,9 @@ page, Settings, the offline page and the launcher window show these exact lines
 the copy that travels with every update (backend/) is the one the tests check.
 
 Both kinds start Deja Vu1 with --background: it keeps running after the
-PowerShell or Terminal window closes. The START blocks add --autostart, so it
-also starts by itself at every sign-in (Settings -> Desktop app turns that off).
+PowerShell or Terminal window closes, and stops by itself once no page has been
+open for a while and nothing is under way (idle_stop.py). Deja Vu1 never starts
+with the computer, so no block asks for that.
 
 START blocks ("Start and check"): start the copy in Documents/Deja_VU1 (or
 download it first when that folder has no start.py), then the launcher prints
@@ -48,8 +49,8 @@ START_POWERSHELL = '\n'.join([
     f" Invoke-WebRequest '{ASSET}' -OutFile \"$env:TEMP\\dejavu1.zip\";"
     " Expand-Archive \"$env:TEMP\\dejavu1.zip\" -DestinationPath $dest -Force }",
     "Set-Location $dest",
-    "if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart }"
-    " elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart }"
+    "if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background }"
+    " elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background }"
     " else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }",
 ])
 
@@ -57,7 +58,7 @@ START_BASH = '\n'.join([
     "[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip"
     f" {ASSET} && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1"
     " && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }",
-    "cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart",
+    "cd ~/Documents/Deja_VU1 && python3 start.py --background",
 ])
 
 

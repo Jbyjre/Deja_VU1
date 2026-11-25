@@ -593,6 +593,19 @@
     </section>
 
 
+    <!-- Every print, kept on this computer (prints.js, /api/prints). -->
+    <section class="card liquid-glass prints-card" id="prints-card" aria-labelledby="prints-title">
+      <div class="card-head">
+        <div><h2 id="prints-title">Prints</h2><p class="card-sub" id="prints-sub">Every print, day by day, with its end picture, time and filament. Kept on this computer.</p></div>
+        <div class="pr-tools">
+          <label class="pr-search"><span class="sr-only">Search prints</span><input type="search" id="prints-q" placeholder="Search prints" autocomplete="off" spellcheck="false"></label>
+          <label class="pr-keep"><span>Keep</span><select id="prints-keep" aria-label="How long prints are kept">
+            <option value="30">30 days</option><option value="90">90 days</option><option value="365">A year</option><option value="0">Always</option></select></label>
+        </div>
+      </div>
+      <div id="prints-body"><p class="log-empty is-loading">Loading…</p></div>
+    </section>
+
     <!-- What the printer's own history says (insights.js, /api/insights). -->
     <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
       <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
@@ -1246,7 +1259,7 @@
         <button type="button" class="vc-tool" id="app-restart"><b>Restart</b><span>Start the dashboard fresh. Takes a few seconds.</span></button>
         <button type="button" class="vc-tool" id="app-repair"><b>Repair files</b><span>Put the published app files back. Your data stays.</span></button>
         <button type="button" class="vc-tool" id="app-safety"><b>Safety copy now</b><span>Save your settings and records before a change.</span></button>
-        <button type="button" class="vc-tool is-stop" id="app-stop"><b>Stop Deja Vu1</b><span>Close it on this computer. It stays closed until you start it, the computer restarts or four hours pass.</span></button>
+        <button type="button" class="vc-tool is-stop" id="app-stop"><b>Stop Deja Vu1</b><span>Close it on this computer now. It stays closed until you open the dashboard or the launcher again.</span></button>
         <button type="button" class="vc-tool" id="app-ready"><b>Check it all works</b><span>Pages, demo data, printers, saved data and updates, checked now.</span></button>
         <button type="button" class="vc-tool desk-only" id="app-report"><b>Copy a report for help</b><span>Version, start-up, checks, printer link and recent notes, ready to paste.</span></button>
       </div>
@@ -1254,14 +1267,14 @@
       <div class="vc-ready" id="app-ready-box" role="status" hidden></div>
       <details class="vc-cmd" id="vc-fix">
         <summary><b>Start and check with a command</b> <span>If the dashboard stops answering or won&rsquo;t start</span></summary>
-        <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It starts Deja Vu1 in Documents if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Deja Vu1 then keeps running after you close the window, and starts by itself when you sign in.</p>
+        <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It starts Deja Vu1 in Documents if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. You can close the window afterwards. Deja Vu1 stops by itself once no page has been open for 5 minutes and nothing is under way.</p>
         <div class="pill-toggle vc-os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
         <div class="vc-term" data-start-block="win"><button class="btn small vc-copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
         <div class="vc-term" data-start-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
       </details>
       <details class="vc-cmd" id="vc-cmd">
         <summary><b>Update or repair with a command</b> <span>Another way, if the button can&rsquo;t install</span></summary>
@@ -1303,13 +1316,12 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
           <p class="field-hint" id="da-window-note" role="status"></p>
         </article>
         <article class="da-option">
-          <h3>Start with this computer</h3>
-          <p>Deja Vu1 starts by itself when you sign in to this computer, so the dashboard is ready whenever you open it, even before a printer is added.</p>
-          <label class="da-autostart"><input type="checkbox" id="da-autostart"> Start Deja Vu1 when this computer starts</label>
+          <h3>When you close Deja Vu1</h3>
+          <p>Deja Vu1 runs only while you use it. It never starts with this computer, and it stops by itself 5 minutes after its last page closes, once no print, slice or download is under way, so nothing of it is left running. Open the dashboard or the installed app and press Start to bring it back.</p>
           <p class="field-hint" id="da-autostart-note" role="status"></p>
         </article>
       </div>
-      <p class="field-hint">Either way, the launcher window is what runs Deja Vu1. Keep it open. Closing the app window leaves the dashboard running, so your phone can still use it.</p>
+      <p class="field-hint" id="da-running" role="status">Closing the app window or the launcher window doesn&rsquo;t stop Deja Vu1 at once, so your phone can still use it for a while. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/how-it-runs.md" target="_blank" rel="noopener">What Deja Vu1 runs on and how it runs</a></p>
     </section>
     <section class="card liquid-glass about-card" id="about-card">
       <div class="card-head"><div><h2>About Deja Vu1</h2><p class="card-sub" id="about-version">A dashboard and print-preparation workspace for the Snapmaker U1.</p></div>
@@ -1707,13 +1719,29 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       <div><h2 id="flip-title">Time-lapse</h2><p class="card-sub" id="flip-sub"></p></div>
       <button class="btn small" data-close type="button">Close</button>
     </div>
-    <div class="flip-stage"><img id="flip-img" alt="Time-lapse frame"></div>
+    <div class="flip-stage" id="pl-stage">
+      <img id="flip-img" alt="Time-lapse frame">
+      <video id="pl-video" playsinline preload="metadata" hidden></video>
+    </div>
     <div class="flip-controls">
-      <button class="btn small" id="flip-play" type="button">Pause</button>
-      <label class="sr-only" for="flip-scrub">Frame</label>
+      <button class="btn small" id="flip-play" type="button" aria-pressed="false">Play</button>
+      <label class="sr-only" for="flip-scrub">Position</label>
       <input type="range" id="flip-scrub" min="0" max="0" value="0">
       <span class="flip-count" id="flip-count"></span>
     </div>
+    <div class="flip-controls pl-more">
+      <button class="btn small" id="pl-back" type="button" aria-label="One frame back">&#8592; Frame</button>
+      <button class="btn small" id="pl-fwd" type="button" aria-label="One frame forward">Frame &#8594;</button>
+      <label class="pl-field">Speed
+        <select id="pl-speed"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select>
+      </label>
+      <label class="pl-field"><input type="checkbox" id="pl-loop"> Loop</label>
+      <span class="pl-gap"></span>
+      <button class="btn small" id="pl-full" type="button">Full screen</button>
+      <button class="btn small" id="pl-save" type="button" hidden>Save as a video</button>
+      <a class="btn small" id="pl-download" href="#" download hidden>Download</a>
+    </div>
+    <p class="pl-keys">Space plays and pauses, the arrow keys step one frame, F fills the screen.</p>
   </div>
 </dialog>
 
@@ -1723,8 +1751,12 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     <h2 id="celebrate-title">Print finished</h2>
     <p class="card-sub" id="celebrate-sub"></p>
     <div class="celebrate-stats divider-row cols-3" id="celebrate-stats"></div>
-    <div class="dialog-actions">
+    <p class="celebrate-next" id="celebrate-next" hidden></p>
+    <div class="dialog-actions celebrate-actions">
+      <button class="btn" id="celebrate-record" type="button">See the record</button>
+      <button class="btn" id="celebrate-again" type="button">Print again</button>
       <button class="btn" id="celebrate-timelapse" type="button">Watch time-lapse</button>
+      <button class="btn" id="celebrate-next-go" type="button" hidden>Look at the next one</button>
       <button class="btn primary" data-close type="button">Done</button>
     </div>
   </div>
@@ -1795,6 +1827,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="workshop-part4.js"></script>
 <script src="workshop-part5.js"></script>
 <script src="workshop.js"></script>
+<script src="player.js"></script>
 <script src="studio.js"></script>
 <script src="layer-stack.js"></script>
 <script src="farm-part1.js"></script>
@@ -1809,10 +1842,12 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>
 <script src="printer-page.js"></script>
+<script src="camera-window.js"></script>
 <script src="printer-extras.js"></script>
 <script src="logbook.js"></script>
 <script src="errorhelp.js"></script>
 <script src="insights.js"></script>
+<script src="prints.js"></script>
 <script src="printroom.js"></script>
 <script src="gcode-view.js"></script>
 <script src="slicer-model.js"></script>
@@ -1841,6 +1876,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="strip.js"></script>
 <script src="text.js"></script>
 <script src="pagebar.js"></script>
+<script src="activity.js"></script>
 <script src="rail.js"></script>
 <script src="intro.js"></script>
 </body>

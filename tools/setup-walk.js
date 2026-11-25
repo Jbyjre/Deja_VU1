@@ -128,7 +128,7 @@ async function walk(browser, server, address, shots) {
 
   // A laptop: every step opens, the printer step has room around its parts, the picker's checkbox is not stretched.
   let page = await visit(browser, server, LAPTOP);
-  check(/Step 1 of 7/.test(await stepText(page)), 'A laptop sees seven setup steps');
+  check(/Step 1 of 9/.test(await stepText(page)), 'A laptop sees nine setup steps');
   await page.click('#setup-next');
   await shot(page, 'step2-make-it-yours');
   const box = await page.locator('#setup-content [data-surprises]').boundingBox();
@@ -147,8 +147,8 @@ async function walk(browser, server, address, shots) {
   // An address that was typed but not tested is connected by Continue, not thrown away.
   await page.fill('#setup-url', address);
   await page.click('#setup-next');
-  await page.waitForFunction(() => /Step 4 of 7/.test(document.getElementById('setup-step').textContent), null, { timeout: 15000 }).catch(() => {});
-  check(/Step 4 of 7/.test(await stepText(page)), 'Continue with a typed printer address connects it and moves on');
+  await page.waitForFunction(() => /Step 4 of 9/.test(document.getElementById('setup-step').textContent), null, { timeout: 15000 }).catch(() => {});
+  check(/Step 4 of 9/.test(await stepText(page)), 'Continue with a typed printer address connects it and moves on');
   check((await printerCount(server)) === 1, 'The printer is in the list once');
   await page.click('#setup-back');
   check((await page.textContent('#setup-content')).includes('Added: My U1') && (await page.isHidden('#setup-connect')),
@@ -173,16 +173,16 @@ async function walk(browser, server, address, shots) {
   await page.click('#setup-next');
   await page.waitForFunction(() => /refused|Press Continue again/.test(document.getElementById('setup-status').textContent), null, { timeout: 15000 }).catch(() => {});
   const status = await page.textContent('#setup-status');
-  check(/Step 3 of 7/.test(await stepText(page)) && /Press Continue again to skip/.test(status), 'A bad address stays on the step and says how to go on: ' + status.slice(0, 60));
+  check(/Step 3 of 9/.test(await stepText(page)) && /Press Continue again to skip/.test(status), 'A bad address stays on the step and says how to go on: ' + status.slice(0, 60));
   await page.click('#setup-next');
-  check(/Step 4 of 7/.test(await stepText(page)), 'Continue a second time skips the printer');
+  check(/Step 4 of 9/.test(await stepText(page)), 'Continue a second time skips the printer');
   await page.context().close();
 
   // Enter in the name field goes on.
   page = await visit(browser, server, LAPTOP);
   await page.fill('#setup-name', 'Sam');
   await page.press('#setup-name', 'Enter');
-  check(/Step 2 of 7/.test(await stepText(page)), 'Enter in the name field goes to the next step');
+  check(/Step 2 of 9/.test(await stepText(page)), 'Enter in the name field goes to the next step');
   await page.context().close();
 
   // A phone: five steps, none about showing a code for a phone or the desktop app.
@@ -214,14 +214,14 @@ async function walk(browser, server, address, shots) {
   // The Language step: first, while a translation is installed and none was chosen; a language other than the one on screen is saved
   // and the page reloads in it; the browser's own language is suggested, never applied by itself.
   page = await visit(browser, server, { ...LAPTOP, freshLanguage: true });
-  check(/Step 1 of 8 · Language/.test(await stepText(page)), 'A first visit sees a Language step first, eight steps in all: ' + (await stepText(page)));
+  check(/Step 1 of 10 · Language/.test(await stepText(page)), 'A first visit sees a Language step first, ten steps in all: ' + (await stepText(page)));
   const labels = await page.$$eval('[data-setup-lang]', els => els.map(e => e.textContent.trim()));
   check(labels.includes('English') && labels.includes('Español (Spanish)'), 'It offers English and Spanish by their own names: ' + labels.join(' | '));
   check(!(await page.textContent('#setup-content')).includes('Your browser is set to'), 'With an English browser it suggests nothing');
   await shot(page, 'language-step');
   await page.click('[data-setup-lang="es"]');
-  await page.waitForFunction(() => /Paso 1 de 7/.test((document.getElementById('setup-step') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
-  check(/Paso 1 de 7/.test(await stepText(page)), 'Choosing Spanish reloads the page in Spanish, and setup goes on at its first step: ' + (await stepText(page)));
+  await page.waitForFunction(() => /Paso 1 de 9/.test((document.getElementById('setup-step') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+  check(/Paso 1 de 9/.test(await stepText(page)), 'Choosing Spanish reloads the page in Spanish, and setup goes on at its first step: ' + (await stepText(page)));
   check((await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === 'es', 'The choice is saved in this browser');
   check((await page.textContent('#setup-content')).includes('Configura tu espacio de trabajo'), 'The welcome step is in Spanish');
   await shot(page, 'welcome-in-spanish');
@@ -234,11 +234,11 @@ async function walk(browser, server, address, shots) {
     'A Spanish browser sees Spanish suggested, but English still on screen until it is pressed');
   check((await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === null, 'Nothing is saved until a language is pressed');
   await page.click('#setup-next');
-  check(/Step 2 of 8 · Welcome/.test(await stepText(page)) && (await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === 'en',
+  check(/Step 2 of 10 · Welcome/.test(await stepText(page)) && (await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === 'en',
     'Continue stays in English and remembers it');
   await page.reload();
   await page.waitForSelector('#setup-dialog[open]', { timeout: 15000 });
-  check(/Step 1 of 7/.test(await stepText(page)), 'After a language was chosen the Language step does not come back');
+  check(/Step 1 of 9/.test(await stepText(page)), 'After a language was chosen the Language step does not come back');
   await page.context().close();
 }
 

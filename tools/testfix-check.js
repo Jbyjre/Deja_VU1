@@ -203,7 +203,10 @@ async function keep(browser, base) {
     let jobs = [];
     if (phase === 1) jobs = [job('running', 2000000)];
     else if (phase === 2) jobs = [job('running', 4000000)];
-    else if (phase >= 3) jobs = [job('done', 5000000)];
+    else if (phase >= 3) {
+      jobs = [job('done', 5000000)];
+      saved = [{ name: 'run.mp4', size: 5000000, saved_at: '2026-11-19T10:00:00' }];   // the server lists a copy once it is done
+    }
     if (phase >= 1 && phase < 4) phase += 1;
     route.fulfill({ json: { connected: true, demo: false, jobs, saved } });
   });
@@ -211,7 +214,6 @@ async function keep(browser, base) {
   await page.route('**/api/timelapse/keep', route => {
     posted += 1;
     phase = 1;
-    setTimeout(() => { saved = [{ name: 'run.mp4', size: 5000000, saved_at: '2026-11-19T10:00:00' }]; }, 2500);
     route.fulfill({ status: 202, json: { job: job('running', 0), running: true } });
   });
   await page.evaluate(() => showTab('control'));

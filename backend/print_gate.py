@@ -34,6 +34,8 @@ score never overrules the gate: while anything blocks the start, health says
 score beside a refused print.
 """
 
+import re
+
 import color_check
 import cost_calculator
 import file_library
@@ -138,6 +140,39 @@ def _leftover(bed, analysis, machine):
     return {"file": name, "outcome": bed.get("outcome"), "this_box": this, "leftover_box": last, "overlaps": overlaps}
 
 
+from print_record import _SLICED_FROM    # one pattern for the note Files keeps on a sliced file
+
+
+def _model_of(filename):
+    """The model a G-code file was sliced from in Deja Vu1, while that model is still in the library (else None)."""
+    note = (file_library.origins().get(filename) or {}).get("note") or ""
+    m = _SLICED_FROM.match(note)
+    return m.group(1) if m and file_library.exists(m.group(1)) else None
+
+
+def _fixes(filename, state, pre, fil_block, noz_block, bed_check):
+    """Each refusal's way out, in the order the screen offers them: one per kind, each a place, never a start."""
+    out = []
+
+    def add(kind, label, **extra):
+        if not any(f["kind"] == kind for f in out):
+            out.append({"kind": kind, "label": label, **extra})
+    if state["state"] in ("printing", "paused") and modules.is_enabled("print_queue"):
+        add("queue", "Add it to the queue")
+    if state["state"] == "error" or state.get("resume_saved"):
+        add("printer", "Open the Printer page")
+    model = _model_of(filename) if (pre["errors"] or fil_block) else None
+    if model:
+        add("slicer", f"Open {model} in the Slicer", model=model)
+    if fil_block:
+        add("loaded", "See what is loaded")
+    if noz_block:
+        add("nozzle", "Record a nozzle swap")
+    if bed_check:
+        add("bed", "Go to the bed check")
+    return out
+
+
 def summary(filename, printer_state=None):
     """The whole Confirm Print screen for one file on the selected printer."""
     if file_library.kind_of(filename) != "gcode":
@@ -226,10 +261,13 @@ def summary(filename, printer_state=None):
                                             analysis["estimated_hours"])
 
     verdict = "blocked" if blocking else ("confirm" if warnings else "clear")
+    fixes = _fixes(filename, state, pre, fil_block, noz_block, bed_check)
     return {
         "filename": filename,
         "verdict": verdict,
         "blocking": blocking,
+        # What each refusal's fix is, as a place to go: the screen turns each one into a button.
+        "fixes": fixes,
         "warnings": warnings,
         "info": info,
         "printer_state": state["state"],

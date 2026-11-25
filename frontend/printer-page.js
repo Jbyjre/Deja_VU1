@@ -57,7 +57,8 @@ window.PrinterPage = (() => {
         <img class="pcam-img" alt="Live picture from the selected printer's camera" hidden>
         <span class="pcam-empty">Camera off</span>
         <span class="pcam-mode" role="status"></span>
-        <button class="pcam-toggle" type="button" aria-pressed="false">Turn camera on</button>
+        <button class="pcam-toggle" type="button" aria-pressed="false">Turn camera on</button>${host.dataset.cam === 'window' ? '' : `
+        <button class="pcam-pop" type="button" aria-label="Open the camera in a window" title="Open the camera in a window you can move, resize, zoom into and pin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M18 14v5H5V6h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`}
       </div><p class="pcam-note" hidden></p>`;
     const saved = store.get(`dejavu1.cam.${host.dataset.cam}`);
     const cam = { host, run: 0, on: saved ? saved !== 'off' : store.get('dejavu1.pref.cam') !== 'off', url: null, timer: 0, noStream: null, noLive: null };
@@ -75,7 +76,10 @@ window.PrinterPage = (() => {
     cam.mode = host.querySelector('.pcam-mode');
     cam.note = host.querySelector('.pcam-note');
     cam.toggle = host.querySelector('.pcam-toggle');
+    host.querySelector('.pcam-pop')?.addEventListener('click', () => { if (window.CameraWindow) CameraWindow.open(); });
     cam.toggle.addEventListener('click', () => {
+      // While the camera window is open the other views wait; turning one on brings the picture back here instead.
+      if (!cam.on || shared(cam)) { if (shared(cam)) CameraWindow.close(); cam.on = true; store.set(`dejavu1.cam.${host.dataset.cam}`, 'on'); syncCams(); return; }
       cam.on = !cam.on;
       store.set(`dejavu1.cam.${host.dataset.cam}`, cam.on ? 'on' : 'off');
       syncCam(cam);
@@ -83,7 +87,10 @@ window.PrinterPage = (() => {
     cams.push(cam);
     return cam;
   }
-  const visible = el => el && el.offsetParent !== null && !document.hidden;
+  // Shown on screen now (a floating window has no offsetParent, so this asks for its boxes instead).
+  const visible = el => !!el && !document.hidden && el.getClientRects().length > 0;
+  // The camera window shows the picture; the other views wait so the camera sends one stream, not two.
+  const shared = cam => cam.host.dataset.cam !== 'window' && !!window.CameraWindow && CameraWindow.isOpen();
   /* What the picture fell back from, in a few words (each is remembered per printer until the page is reloaded). */
   const pkey = () => String(currentPrinter || 'none');
   const fellBack = cam => {
@@ -270,10 +277,13 @@ window.PrinterPage = (() => {
     next();
   }
   function syncCam(cam) {
-    const want = cam.on && visible(cam.host);
+    const away = shared(cam), want = cam.on && !away && visible(cam.host);
     const running = cam.frame.dataset.mode !== 'off';
     if (want && !running) startCam(cam);
-    else if (!want && running) stopCam(cam, cam.on ? 'Paused while hidden' : 'Camera off');
+    else if (!want && running) stopCam(cam, away ? 'Showing in the camera window' : cam.on ? 'Paused while hidden' : 'Camera off');
+    else if (away && !running && cam.on) setText(cam.host.querySelector('.pcam-empty'), 'Showing in the camera window');
+    if (away) setText(cam.toggle, 'Show it here');
+    cam.host.classList.toggle('pcam-away', away);
   }
   const syncCams = () => cams.forEach(syncCam);
 

@@ -137,6 +137,47 @@ class TestGate(GateCase):
             print_gate.summary("spur_gear_24t.stl")
 
 
+class TestFixes(GateCase):
+    """Each refusal comes with its way out (FLOW.1): a place to go, never a start."""
+
+    def kinds(self, gate):
+        return [f["kind"] for f in gate["fixes"]]
+
+    def test_busy_printer_offers_the_queue(self):
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(self.kinds(gate)[0], "queue")
+        self.assertEqual(gate["fixes"][0]["label"], "Add it to the queue")
+
+    def test_no_queue_offer_when_the_queue_is_switched_off(self):
+        with mock.patch.object(print_gate.modules, "is_enabled", side_effect=lambda m: m != "print_queue"):
+            gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertNotIn("queue", self.kinds(gate))
+
+    def test_wrong_colour_offers_what_is_loaded_and_the_slicer_when_the_model_is_here(self):
+        with open(os.path.join(file_library.FILES_DIR, "3dbenchy_pla.gcode"), "rb") as fh:
+            data = fh.read()
+        file_library.save("from_model.gcode", data, origin="slicer", note='Sliced from 3dbenchy.stl with "Standard"')
+        with mock_moonraker.use_printer("u1-garage"):
+            mock_moonraker.load_filament("T0", 1)
+            gate = print_gate.summary("from_model.gcode")
+            plain = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(gate["verdict"], "blocked")
+        self.assertIn("loaded", self.kinds(gate))
+        slicer = [f for f in gate["fixes"] if f["kind"] == "slicer"]
+        self.assertEqual(slicer, [{"kind": "slicer", "label": "Open 3dbenchy.stl in the Slicer", "model": "3dbenchy.stl"}])
+        self.assertNotIn("slicer", self.kinds(plain))          # a file not sliced here names no model
+
+    def test_a_clear_print_has_nothing_to_fix(self):
+        mock_moonraker.cancel_print()
+        for task in maintenance.TASKS:
+            maintenance.mark_done(task["id"])
+        self.assertEqual(print_gate.summary("3dbenchy_pla.gcode")["fixes"], [])
+
+    def test_one_button_per_kind(self):
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(len(self.kinds(gate)), len(set(self.kinds(gate))))
+
+
 class TestHealth(unittest.TestCase):
     def test_deductions_are_listed_and_add_up(self):
         maint = {"tasks": [{"status": "overdue"}, {"status": "due_soon"}]}
