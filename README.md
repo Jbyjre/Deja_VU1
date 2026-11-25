@@ -32,7 +32,9 @@ and overdue maintenance at the top.</sub>
   person: a fault, a paused or finished print, maintenance that's due.
 - **Ask an assistant, with your own AI.** Sign in to a Claude or ChatGPT plan from the app, or connect
   a model on your computer or an API key from any of 29 services. Print watch looks at the camera
-  every few minutes and can pause a failed print; print doctor reads a photo of a bad print. Ask in
+  every few minutes, rates what it sees, explains why and follows your rule for each kind of
+  problem (note it, alert you, pause, or let the AI decide), and you can try it first on a recorded
+  time-lapse; print doctor reads a photo of a bad print. Ask in
   your own words: it reads the printer, files and history, homes, moves and heats by itself, makes and
   slices parts, writes automations, and asks only before it ends a print early. Fixed limits hold
   whatever it is told, only your tap starts a print, and conversations stay on your computer.
@@ -247,7 +249,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background
   the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
   Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
   Backup restore and an update install.
-- **Automated:** 2130 tests passed on Python 3.13 (25 November 2026). GitHub Actions
+- **Automated:** 2156 tests passed on Python 3.13 (25 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
   Snapmaker Orca v2.4.1 on Linux and Windows.
@@ -289,7 +291,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 2130 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2156 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

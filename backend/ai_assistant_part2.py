@@ -8,6 +8,7 @@ _touch, chats, clear, parse, reset, stop, view.
 
 import ai_providers
 import ai_signin
+import ai_watch_policy
 import base64
 import json
 import mock_moonraker
@@ -15,7 +16,7 @@ import os
 import re
 import storage
 import time
-from ai_assistant_part1 import MAX_RESULT, MAX_SAVED_CHATS, MAX_THREADS, _CHATS_DIR, _SETTINGS_PATH, _lock, _threads  # noqa: F401
+from ai_assistant_part1 import MAX_RESULT, MAX_SAVED_CHATS, MAX_THREADS, _CHATS_DIR, _SETTINGS_PATH, _lock, _threads, _watch  # noqa: F401
 
 
 def reset():
@@ -25,6 +26,11 @@ def reset():
         _threads.clear()
         for row in chats()["chats"]:
             _drop_chat_file(row["id"])
+        for book in ("log", "last", "first", "final", "pictures"):
+            _watch[book].clear()
+        _watch["usage"].update(checks=0, cost_usd=0.0, **{"in": 0, "out": 0})
+        _watch["loaded"] = True
+        ai_watch_policy.save_log([])
     ai_providers.reset()
     ai_signin.reset()
 

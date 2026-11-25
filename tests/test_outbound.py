@@ -22,6 +22,7 @@ And every one fails in words, never with a traceback or a hang.
 
 import json
 import os
+import json
 import socket
 import sys
 import threading
@@ -233,6 +234,81 @@ class TestNotifications(unittest.TestCase):
         result = notifications._send_now("hi", {"telegram_bot_token": token, "telegram_chat_id": "42"})
         self.assertIn("chat not found", result["telegram"]["error"])
         self.assertNotIn(token, result["telegram"]["error"])
+
+    def parts(self, kw):
+        """The fields of a multipart/form-data body, read back with the standard library's own MIME parser."""
+        import email.parser
+        head = f"Content-Type: {kw['headers']['Content-Type']}\r\n\r\n".encode()
+        msg = email.parser.BytesParser().parsebytes(head + kw["raw"])
+        self.assertTrue(msg.is_multipart())
+        return {p.get_param("name", header="content-disposition"): p for p in msg.get_payload()}
+
+    def test_a_picture_goes_with_the_words_on_every_channel(self):
+        self.fake_send(lambda url, what, kw: {"ok": True, "status": 200, "body": {"ok": True}})
+        jpeg = b"\xff\xd8\xff\xe0" + bytes(range(256)) * 40 + b"\xff\xd9"
+        said = "Workshop U1: print watch says it looks failed. Spaghetti under the left head \u2019s nozzle."
+        settings = {"ntfy_topic": "dv", "discord_webhook_url": "https://discord.com/api/webhooks/1/abc",
+                    "telegram_bot_token": "123456:" + "A" * 30, "telegram_chat_id": "42"}
+        result = notifications._send_now(said, settings, picture=(jpeg, "image/jpeg"))
+        self.assertEqual(set(result), {"ntfy", "discord", "telegram"})
+        ntfy = next(kw for url, what, kw in self.sent if what == "ntfy.sh")
+        self.assertEqual((ntfy["method"], ntfy["raw"], ntfy["headers"]["filename"]), ("PUT", jpeg, "print-watch.jpg"))
+        import email.header
+        words = email.header.decode_header(ntfy["headers"]["message"])[0]
+        self.assertEqual(words[0].decode(words[1]), said)               # non-ASCII words survive as RFC 2047
+        self.assertNotIn("\n", ntfy["headers"]["message"])
+        url, _, kw = next(s for s in self.sent if s[1] == "Discord")
+        self.assertTrue(url.endswith("?wait=true"))
+        fields = self.parts(kw)
+        self.assertEqual(json.loads(fields["payload_json"].get_payload(decode=True))["content"], said)
+        self.assertEqual((fields["files[0]"].get_filename(), fields["files[0]"].get_payload(decode=True)),
+                         ("print-watch.jpg", jpeg))
+        url, _, kw = next(s for s in self.sent if s[1] == "Telegram")
+        self.assertTrue(url.endswith("/sendPhoto"))
+        fields = self.parts(kw)
+        self.assertEqual(fields["chat_id"].get_payload(decode=True), b"42")
+        self.assertEqual(fields["caption"].get_payload(decode=True).decode("utf-8"), said)
+        self.assertEqual((fields["photo"].get_content_type(), fields["photo"].get_payload(decode=True)),
+                         ("image/jpeg", jpeg))
+
+    def test_a_long_caption_is_shortened_and_an_unsuitable_picture_is_left_off(self):
+        self.fake_send(lambda url, what, kw: {"ok": True, "status": 200, "body": {"ok": True}})
+        settings = {"telegram_bot_token": "123456:" + "A" * 30, "telegram_chat_id": "42"}
+        notifications._send_now("y" * 3000, settings, picture=(b"\xff\xd8data", "image/jpeg"))
+        caption = self.parts(self.sent[-1][2])["caption"].get_payload(decode=True)
+        self.assertLessEqual(len(caption.decode("utf-8")), 1024)
+        for bad in ((b"<svg/>", "image/svg+xml"), (b"x" * (notifications.PICTURE_MAX_BYTES + 1), "image/jpeg"),
+                    (b"", "image/png"), "not a picture"):
+            notifications._send_now("hi", settings, picture=bad)
+            self.assertTrue(self.sent[-1][0].endswith("/sendMessage"), bad[1] if isinstance(bad, tuple) else bad)
+
+    def test_a_multipart_picture_arrives_whole_over_a_real_connection(self):
+        got = {}
+
+        class H(BaseHTTPRequestHandler):
+            def do_POST(self):
+                got["type"] = self.headers["Content-Type"]
+                got["raw"] = self.rfile.read(int(self.headers["Content-Length"]))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": true}')
+
+            def log_message(self, *a):
+                pass
+        server = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        png = b"\x89PNG\r\n\x1a\n" + b"\r\n--" * 50
+        body, ctype = notifications._multipart([("caption", "Caf\u00e9 test")], "photo", "print-watch.png", png,
+                                               "image/png")
+        r = outbound.send(f"http://127.0.0.1:{server.server_address[1]}/sendPhoto", "Telegram", raw=body, method="POST",
+                          headers={"Content-Type": ctype})
+        self.assertTrue(r["ok"], r)
+        fields = self.parts({"headers": {"Content-Type": got["type"]}, "raw": got["raw"]})
+        self.assertEqual(fields["photo"].get_payload(decode=True), png)
+        self.assertEqual(fields["caption"].get_payload(decode=True).decode("utf-8"), "Caf\u00e9 test")
 
     def test_held_notifications_go_out_after_quiet_hours_and_failures_stay_queued(self):
         hour = __import__("datetime").datetime.now().hour
