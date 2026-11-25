@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.48",
+      "date": "2026-11-25",
+      "name": "The Slicer cuts models with a plane and slices the parts it makes",
+      "published": true,
+      "summary": "The Slicer cuts models with a plane and slices the parts it makes.",
+      "changes": [
+        "The Slicer cuts models with a plane and slices the parts it makes"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.47",
       "date": "2026-11-25",
       "name": "Show the version history and update messages in your own language",
