@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.43",
+      "date": "2026-11-25",
+      "name": "Print watch that follows your rules, shows its picture, and lets you choose i...",
+      "published": true,
+      "summary": "Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened.",
+      "changes": [
+        "Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.42",
       "date": "2026-11-25",
       "name": "Replay an ended print on the 3D twin",
