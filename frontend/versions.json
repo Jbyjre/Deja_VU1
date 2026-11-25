@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.44",
+      "date": "2026-11-25",
+      "name": "Plugins: add your own house rules, buttons and panes, each allowed only what...",
+      "published": true,
+      "summary": "Plugins: add your own house rules, buttons and panes, each allowed only what you tick; find a model and bring downloads straight onto a plate.",
+      "changes": [
+        "Plugins: add your own house rules, buttons and panes, each allowed only what you tick; find a model and bring downloads straight onto a plate"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.43",
       "date": "2026-11-25",
       "name": "Print watch that follows your rules, shows its picture, and lets you choose i...",

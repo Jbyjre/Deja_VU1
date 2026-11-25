@@ -126,6 +126,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.44 (25 November 2026): Plugins: add your own house rules, buttons and panes, each allowed only what...
+
+- Plugins: add your own house rules, buttons and panes, each allowed only what you tick; find a model and bring downloads straight onto a plate
+
 ## 0.20.43 (25 November 2026): Print watch that follows your rules, shows its picture, and lets you choose i...
 
 - Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened
