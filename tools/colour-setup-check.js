@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const net = require('net');
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (e) { if (process.argv.includes('--probe')) process.exit(1); throw e; }
 
@@ -238,6 +238,21 @@ async function main() {
       const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
       check(/^#[0-9a-f]{6}$/.test(hex) && r > b + 80 && r > g, `an orange spool reads as an orange (${hex})`);
       if (shots) await page.screenshot({ path: path.join(shots, 'colour-setup-1366-measured.png') });
+
+      /* The bench: three readings of a spool whose colour is known, the file for the report tool, and the report. */
+      await page.locator('#cs-bench summary').click();
+      await page.fill('#cs-b-brand', 'Acme');
+      await page.fill('#cs-b-material', 'PLA');
+      await page.fill('#cs-b-name', 'Signal orange');
+      await page.locator('#cs-b-take').click();
+      await page.waitForFunction(() => /Recorded 3 readings/.test(document.getElementById('cs-b-note').innerText), null, { timeout: 90000 });
+      check(/Acme PLA Signal orange/.test(await page.locator('#cs-bench-list').innerText()) && /3 readings/.test(await page.locator('#cs-bench-list').innerText()), 'the bench lists the spool with its three readings');
+      const [benchFile] = await Promise.all([page.waitForEvent('download'), page.locator('#cs-b-download').click()]);
+      const benchPath = await benchFile.path();
+      const benchData = JSON.parse(fs.readFileSync(benchPath, 'utf8'));
+      check(benchFile.suggestedFilename() === 'colour-bench.json' && benchData.samples.length === 3 && benchData.samples[0].raw && benchData.samples[0].reference, 'the download holds the readings with their raw counts and the references in force');
+      const report = spawnSync('python3', [path.join(ROOT, 'tools', 'colour-bench.py'), 'report', benchPath], { encoding: 'utf8' });
+      check(report.status === 0 && /Not enough data to quote a rate/.test(report.stdout) && /Acme PLA Signal orange/.test(report.stdout) && !/SYNTHETIC/.test(report.stdout), 'the report tool reads the download and refuses to quote a rate from one spool');
 
       /* A changed brightness drops the colour and says why. */
       const before = (await getJson('/api/colorcheck/sensors' + q)).sensors[0].reading.settings.gain;

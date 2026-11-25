@@ -15,7 +15,7 @@ const ColourSetup = (() => {
     ['3 blinks', 'Deja Vu1 answered but refused: the sensor is not assigned to a head yet, the module is off or the lock is on.'],
     ['4 blinks', 'The sensor is not answering: check its four wires.']];
   const st = { timer: null, sensors: [], unassigned: [], connection: null, head: 'T0', moduleOff: false, demo: false,
-    simulated: false, test: { phase: 'idle' }, busy: {}, notes: {}, showPass: false, seenAt: 0, pick: {} };
+    simulated: false, test: { phase: 'idle' }, busy: {}, notes: {}, showPass: false, seenAt: 0, pick: {}, bench: { insertion: 1, busy: false, list: null } };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   /* -- pure helpers (also run by the tests in Node) ------------------------------------------------------------ */
@@ -352,6 +352,57 @@ const ColourSetup = (() => {
     await refresh();
   }
 
+  /* -- bench: spools whose colour is known ------------------------------------------------------------------------------ */
+
+  async function loadBench() {
+    const list = await getJSON(api('/api/colorcheck/bench')).catch(() => null);
+    if (!list || list.error) return;
+    st.bench.list = list;
+    const rows = list.spools.map(sp => `<div class="cs-found"><div><strong>${esc(sp.brand)} ${esc(sp.material)} ${esc(sp.name)}</strong>${sp.blind ? ' <span class="badge">blind</span>' : ''}
+      <span class="field-hint"> label <span class="chip" style="background:${esc(sp.hex)}"></span> ${esc(sp.hex)} · ${sp.samples} readings, ${sp.readable} readable, ${sp.insertions} insertion${sp.insertions === 1 ? '' : 's'}</span></div>
+      <button type="button" class="btn small" data-cs-bench-remove="${esc(sp.key)}">Remove</button></div>`);
+    paint($('cs-bench-list'), (rows.join('') || '<p class="field-hint">Nothing recorded yet.</p>') +
+      `<p class="field-hint">${list.spools.length} spool${list.spools.length === 1 ? '' : 's'}, ${list.count} readings. A rate needs at least ${list.min_spools} spools with ${list.min_repeats} readable readings each.</p>`);
+  }
+
+  async function takeBench() {
+    const sensor = sensorFor(st.head);
+    const note = $('cs-b-note');
+    if (!sensor) { note.textContent = 'Assign the sensor to a head first (step 2).'; return; }
+    const spool = { brand: $('cs-b-brand').value.trim(), material: $('cs-b-material').value.trim(), name: $('cs-b-name').value.trim(), hex: $('cs-b-hex').value };
+    if (!spool.brand || !spool.material || !spool.name) { note.textContent = 'Fill in the brand, the material and the colour name.'; return; }
+    st.bench.busy = true;
+    $('cs-b-take').disabled = true;
+    let done = 0;
+    for (let i = 0; i < 3; i++) {
+      note.textContent = `Reading ${i + 1} of 3: hold the strand still…`;
+      const last = ((sensorFor(st.head) || {}).reading || {}).captured_at || 0;
+      let ok = false;
+      for (let wait = 0; wait < 25 && !ok; wait++) {
+        await refresh();
+        const reading = (sensorFor(st.head) || {}).reading;
+        if (reading && reading.captured_at > last) ok = true; else await sleep(600);
+      }
+      const r = ok ? await postJSON(api('/api/colorcheck/bench'), { toolhead: st.head, spool, blind: $('cs-b-blind').checked,
+        insertion: st.bench.insertion, mode: $('cs-b-mode').value }) : { ok: false, body: { error: 'No new reading arrived.' } };
+      if (!r.ok) { note.textContent = (r.body && r.body.error) || 'Could not record that.'; break; }
+      done += 1;
+    }
+    st.bench.busy = false;
+    $('cs-b-take').disabled = false;
+    if (done === 3) note.textContent = 'Recorded 3 readings. Take the strand out and put it back, then press "I took it out and put it back" and take 3 more.';
+    await loadBench();
+  }
+
+  async function downloadBench() {
+    const all = await getJSON(api('/api/colorcheck/bench?full=1')).catch(() => null);
+    if (!all || all.error) { toast('Could not read the bench readings.', 'bad'); return; }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(all)], { type: 'application/json' }));
+    const link = Object.assign(document.createElement('a'), { href: url, download: 'colour-bench.json' });
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   /* -- the window ---------------------------------------------------------------------------------------------------- */
 
   function bodyHtml() {
@@ -410,6 +461,22 @@ const ColourSetup = (() => {
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-done" data-state="todo"></span>Check a colour</h3>
         <p class="field-hint">Put a strand of filament in the holder. The colour appears here and on the Right colour loaded? card. It is advice: Confirm Print never blocks a start because of it.</p>
         <div id="cs-done-live" class="cs-live"></div>
+        <details class="cs-way" id="cs-bench"><summary>Bench test: measure spools whose colour you know (optional)</summary>
+          <p class="field-hint">Take a spool, say what it is and the colour on its label or listing, put its strand in the holder and take three readings. Take the strand out and put it back for each new insertion. Hold a few spools back as <strong>blind</strong>: do not adjust anything because of them. The report needs at least 10 spools before it will quote a rate, and it shows its counts and a 95 % range.</p>
+          <div class="field-row"><label class="field"><span>Brand</span><input id="cs-b-brand" type="text" maxlength="40" autocomplete="off"></label>
+            <label class="field"><span>Material</span><input id="cs-b-material" type="text" maxlength="40" autocomplete="off" placeholder="PLA"></label>
+            <label class="field"><span>Colour name</span><input id="cs-b-name" type="text" maxlength="40" autocomplete="off"></label>
+            <label class="field field-narrow"><span>Label colour</span><input id="cs-b-hex" type="color" value="#c8281e"></label></div>
+          <div class="field-row field-row-end"><label class="field field-narrow"><span>How</span><select id="cs-b-mode"><option value="strand">Strand in the holder</option><option value="surface">Pressed to the spool</option></select></label>
+            <label class="cs-check"><input id="cs-b-blind" type="checkbox"> <span>Blind spool</span></label>
+            <span class="field-hint" id="cs-b-insertion">Insertion 1</span>
+            <button type="button" class="btn small" id="cs-b-again">I took it out and put it back</button></div>
+          <div class="field-row"><button type="button" class="btn small primary" id="cs-b-take">Take 3 readings</button>
+            <button type="button" class="btn small" id="cs-b-download">Download all readings</button></div>
+          <p class="field-hint" id="cs-b-note" role="status"></p>
+          <div id="cs-bench-list" class="cs-live"></div>
+          <p class="field-hint">Then run <code>python3 tools/colour-bench.py report colour-bench.json</code> for the report.</p>
+        </details>
         <details class="cs-way"><summary>I swapped the sensor board</summary><p class="field-hint">A new chip needs new references. This tells Deja Vu1 it is a different sensor, and drops the old calibration.</p>
           <button type="button" class="btn small" data-cs-newsensor>This is a new sensor</button></details>
       </li>
@@ -440,6 +507,10 @@ const ColourSetup = (() => {
     $('cs-download').addEventListener('click', download);
     $('cs-copy').addEventListener('click', copy);
     $('cs-send').addEventListener('click', sendOverUsb);
+    $('cs-b-take').addEventListener('click', takeBench);
+    $('cs-b-download').addEventListener('click', downloadBench);
+    $('cs-b-again').addEventListener('click', () => { st.bench.insertion = Math.min(99, st.bench.insertion + 1); $('cs-b-insertion').textContent = `Insertion ${st.bench.insertion}`; });
+    $('cs-bench').addEventListener('toggle', e => { if (e.target.open) loadBench(); });
     $('cs-usb-connect').addEventListener('click', () => ColourBridge.connect());
     $('cs-usb-disconnect').addEventListener('click', () => ColourBridge.disconnect());
     ColourBridge.on(() => { if (dialog.open) { renderUsb(); renderLive(); } });
@@ -463,6 +534,9 @@ const ColourSetup = (() => {
         st.busy.gain = true; st.notes.gain = null; renderLive();
         st.notes.gain = await runCommand({ cmd: 'autogain' });
         st.busy.gain = false; renderLive();
+      } else if (t.dataset.csBenchRemove) {
+        await postJSON(api('/api/colorcheck/bench/delete'), { spool: t.dataset.csBenchRemove });
+        await loadBench();
       } else if (t.hasAttribute('data-cs-newsensor')) {
         const r = await runCommand({ cmd: 'new_sensor' });
         toast(r.ok ? 'Marked as a new sensor. Assign it again when it shows up above.' : r.message, r.ok ? 'ok' : 'bad', 6000);

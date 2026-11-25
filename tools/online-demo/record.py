@@ -57,7 +57,9 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 # A plugin's pane: the demo holds only the built-in Print cost plugin, which has no pane.
                 "/api/plugins/pane",
                 # This computer's network addresses, for setting up a Wi-Fi colour checker: never published.
-                "/api/colorcheck/connection"}
+                "/api/colorcheck/connection",
+                # Bench readings of a real sensor's spools: the demo has no sensor.
+                "/api/colorcheck/bench"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
             "/api/colours/plan": "name", "/api/print/preview": "file", "/api/prints/recall": "file",

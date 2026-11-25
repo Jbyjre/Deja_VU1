@@ -288,6 +288,16 @@ def apply(printer_id, toolhead, identity, raw, settings=None):
             "confidence": LOW_CONFIDENCE if flags else HIGH_CONFIDENCE, "source": "deja-vu1", "flags": flags}
 
 
+def references(printer_id, toolhead, identity):
+    """The white and dark references in force for a head's sensor (their raw counts and the settings they were taken at), or None."""
+    with _lock:
+        entry = _entry_for(_load(), printer_id, toolhead, identity)
+    if not entry or not entry.get("white"):
+        return None
+    return {"id": _calibration_id(entry), "white": entry["white"]["raw"], "dark": (entry.get("dark") or {}).get("raw"),
+            "settings": entry["white"].get("settings")}
+
+
 def reconcile(assigned):
     """
     Drop every calibration whose sensor is no longer assigned to that head exactly as it was: a replaced chip,
