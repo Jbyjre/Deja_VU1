@@ -94,12 +94,12 @@ async function main() {
     page.on('pageerror', e => errors.push('script error: ' + e.message));
     const refused = [];
     page.on('response', r => { if (r.status() === 400) refused.push(r.request().method() + ' ' + r.url().replace(server.base, '').split('?')[0]); });
-    page.on('console', m => { if (m.type() === 'error' && !/favicon|status of 40[134]|status of 502/.test(m.text())) errors.push('console: ' + m.text()); });
+    page.on('console', m => { if (m.type() === 'error' && !/favicon|status of 40[0134]|status of 502/.test(m.text())) errors.push('console: ' + m.text()); });
 
-    const post = (url, body) => page.evaluate(async ([u, b]) => {
-      const res = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) });
+    const post = (url, body, raw) => page.evaluate(async ([u, b, r]) => {
+      const res = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: r || JSON.stringify(b || {}) });
       return { status: res.status, body: await res.json().catch(() => ({})) };
-    }, [url, body]);
+    }, [url, body, raw]);
     const getJson = url => page.evaluate(async u => (await fetch(u)).json(), url);
 
     // A returning person's browser: the first-run setup has been seen, so it does not cover the page.
@@ -249,6 +249,47 @@ async function main() {
       await page.waitForFunction(() => /Calibrated against a white reference/i.test(document.getElementById('cs-cal-live').innerText), null, { timeout: 40000 });
       check(true, 'putting the gain back brings the calibration back');
       await page.locator('#colour-setup-close').click();
+
+      /* Confirm Print: the file's colour, the printer's report and the sensor, side by side, and the record of a start
+       * that went ahead against the sensor. */
+      wifiPico.spool('red');
+      await sleep(6000); // a few new readings, so none of the orange ones is left
+      let seen = null;
+      for (let i = 0; i < 40 && !seen; i++) {
+        await sleep(1000);
+        const head = (await getJson('/api/colorcheck/sensors' + q)).sensors[0];
+        if (head.status === 'reading' && head.detected_hex && head.reading.raw.f7 > 2 * head.reading.raw.f3) seen = head.detected_hex;
+      }
+      check(!!seen, `a red spool gives a measured colour (${seen})`);
+      await post('/api/files/upload?name=check_sensor.gcode', null, `; filament_colour = ${seen}\n; filament_type = PLA\nG28\nT0\nG1 X20 Y20 Z0.2 E1\nM104 S0\n`);
+      const confirmText = async () => {
+        await page.evaluate(async () => { location.hash = '#/files'; await Workshop.loadFiles(); await Workshop.openFile('check_sensor.gcode'); });
+        await page.locator('#fd-print').first().click();
+        await page.locator('#confirm-body .gate-banner').waitFor({ timeout: 20000 });
+        return page.locator('#confirm-body').innerText();
+      };
+      let gate = '';
+      for (let attempt = 0; attempt < 3; attempt++) { // a reading may move by a unit of noise between the file and the check
+        gate = await confirmText();
+        if (/colour sensor reads #[0-9a-f]{6}, which matches the file's colour/i.test(gate)) break;
+        await page.locator('#confirm-cancel').click();
+        await sleep(3000);
+      }
+      if (process.env.CHECK_DEBUG) console.log('CONFIRM:', gate.replace(/\s+/g, ' ').slice(0, 900));
+      check(/colour sensor reads #[0-9a-f]{6}, which matches the file's colour/i.test(gate), 'Confirm Print says the sensor matches the file when the right spool is in');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-confirm-match.png') });
+      await page.locator('#confirm-cancel').click();
+      wifiPico.spool('blue');
+      for (let i = 0; i < 40; i++) { await sleep(1000); const h = (await getJson('/api/colorcheck/sensors' + q)).sensors[0]; if (h.detected_hex && h.detected_hex !== seen && h.reading.raw.f2 > h.reading.raw.f7) break; }
+      gate = await confirmText();
+      if (process.env.CHECK_DEBUG) console.log('CONFIRM2:', gate.replace(/\s+/g, ' ').slice(0, 900));
+      check(/Colour sensor reads #[0-9a-f]{6}, far from the file/.test(gate) && /Look at the spool/.test(gate), 'Confirm Print asks for a look at the spool, as advice, when a blue spool is in for a red file');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-confirm-mismatch.png') });
+      await page.locator('#confirm-go').click();
+      await page.waitForTimeout(2500);
+      const records = (await getJson('/api/colorcheck/overrides' + q)).overrides || [];
+      check(records.length >= 1 && /check_sensor/.test(JSON.stringify(records[0])), 'a start that goes ahead against the sensor is recorded');
+      await page.evaluate(() => { const d = document.getElementById('confirm-dialog'); if (d && d.open) d.close(); });
       await openCard();
       await page.waitForFunction(() => /Head T0/i.test(document.getElementById('colors').innerText), null, { timeout: 30000 }).catch(() => {});
       check(/Head T0/i.test(await page.locator('#colors').innerText()), 'the card shows the head with the sensor');
@@ -302,7 +343,8 @@ async function main() {
       usbPico.child.kill();
     }
 
-    if (refused.length) console.log('answers of 400 seen by the page: ' + refused.join(', '));
+    const ours = refused.filter(r => /colorcheck/.test(r));
+    check(ours.length === 0, 'the page was never refused on a colour checker route' + (ours.length ? ': ' + ours.join(', ') : ''));
     check(errors.length === 0, 'no script or console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   } finally {
     await browser.close();
