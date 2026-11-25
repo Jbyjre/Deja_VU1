@@ -302,7 +302,8 @@ async function main() {
     {
       const V = fn => page.evaluate(fn);
       await page.fill('[data-quick="wall_loops"]', '4'); await page.dispatchEvent('[data-quick="wall_loops"]', 'change'); await page.waitForTimeout(300);
-      await page.click('#sl-sets-save'); await page.fill('#sl-sets-name', 'Tough'); await page.press('#sl-sets-name', 'Enter'); await page.waitForTimeout(300);
+      await page.click('#sl-sets-save'); await page.fill('#sl-sets-name', 'Tough'); await page.press('#sl-sets-name', 'Enter');
+      await page.waitForFunction(() => SL.sets.list().length === 1, null, { timeout: 5000 }).catch(() => {});   // a slow machine needs more than 300 ms
       check(await V(() => SL.sets.list().length === 1 && SL.sets.list()[0].name === 'Tough' && SL.sets.list()[0].overrides.wall_loops === 4), 'Save keeps the settings under a name');
       await V(() => { SL.state.overrides = {}; SL.settings.save(); SL.settings.render(); });
       await page.selectOption('#sl-sets-pick', { label: 'Tough' }); await page.waitForTimeout(500);
