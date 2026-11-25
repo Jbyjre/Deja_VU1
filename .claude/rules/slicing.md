@@ -99,8 +99,8 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 
 ## The Slicer (frontend)
 
-- Load order (`index.html`): `u1-plate.js` (before `viewer3d.js`), then `slicer-model.js`, `slicer-scene.js`, `slicer-ui.js`, `slicer-prepare.js`,
-  `slicer-keys.js`, `slicer-settings.js`, `slicer-filament.js`, `slicer-sets.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
+- Load order (`index.html`): `u1-plate.js` (before `viewer3d.js`), then `slicer-cut.js` (pure geometry), `slicer-model.js`, `slicer-scene.js`, `slicer-ui.js`, `slicer-prepare.js`,
+  `slicer-cutui.js`, `slicer-keys.js`, `slicer-settings.js`, `slicer-filament.js`, `slicer-sets.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
   `slicer-gcode-worker.js` is the Preview's Web Worker. Styles are all in `slicer.css` (11 px floor; the page's generic `.tab-sub > *` rule gives
   every direct child a 16 px side margin and its own `max-width`, so set widths outright).
 - `PlateModel` (slicer-model.js) owns the objects and the 12-number transform (3 rows of turn and scale, then the move; row-vector convention, shared with
@@ -108,7 +108,21 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   (`slicer_working.py`, `GET/POST /api/slicer/working`, `working/sync-heads`) is the one settings store: the dock's printer, heads and process blocks
   and the full sheet (`slicer-sheet.js`, every setting of `process_settings.py` with `slicer-help.js` words) write to it, and per-head heights go
   through the shared `tool_setup` records. Plate projects are sliced with `--arrange 0 --orient 0` (Deja Vu1 arranges and orients itself).
-- Unbuilt on purpose: cut, colour and support painting, calibration prints and print by object (SLICER.6), multi-plate project save, the engine's own
+- **Cut and edited shapes (25 November 2026).** `slicer-cut.js` is pure (no graphics: Node tests it in `tests/slicer_cut_check.js`): `cut(positions, colours, plane)` splits triangles in the
+  world, closes each part's flat face (cut edges chained into loops, nesting by even-odd to find holes, holes joined to their outline, ear clipping; a flat corner still gets its triangle of no area,
+  or two neighbours' edges would lose their partner) and moves the plane up to 5 microns off any corner so no sliver of zero thickness is made. Cut points are worked out from the end of the
+  edge that sorts first, so two triangles sharing an edge agree to the last digit. `PlateModel.cutObject` bakes the transform in (`worldShape` turns a mirrored object's triangles back so they face out),
+  makes each kept part an object with the identity transform, `edited: true`, no painted colours (`keepColour: false`) and, for "Cut face down", turns the part (the upper part's cut face looks down already, so
+  it is only lowered). **An object whose shape is not in its file is `edited` (cut and split parts): the server only ever builds a plate from library files plus a transform, so
+  `SL.sources.ensure` (`slicer-cutui.js`) saves its shape as a binary STL `cut-<16 hex of the bytes>.stl` through `/api/files/upload`, sets `sourceName` and `srcKey`, and `savePlate` and `writeProject` call it first.
+  `PlateModel.rows()` gives an edited object with no file the name `''`, never the file it came from, and `savePlate` refuses a plate holding one.** Before 25 November a split sliced every piece as
+  the whole original model. `rows(plate, { visibleOnly: true })` leaves hidden objects out of a slice (a hidden copy of a shown file used to print). The Cut panel takes the inspector's place
+  (`renderInspector` hands over while `state.tool === 'cut'`), the plane and the cut line are drawn through `SliceScene.overlays`, and the preview line is worked out 120 ms after the plane stops moving.
+  Verified: 23 geometry checks (1,800 random cuts of a sphere, a donut and a star block, all closed with the volumes adding up; 0.19 s for 489,000 triangles), 35 plate-model checks, and the browser
+  walk (the saved STL of each part has the cut shape's volume, the slice's plate 3MF names the two cut files and not the model, the parts come back after a reload). **Not verified: a cut plate on the real engine**
+  (the sandbox could not download it).
+- Save project (Ctrl S, the download button beside Slice plate): `savePlate` then a download of the plate 3MF; `viewer3d.js` reads `DejaVu/plate.json` when that file is added again.
+- Unbuilt on purpose: colour and support painting, pins for cut parts, dragging the cut plane in the view, calibration prints and print by object (SLICER.6), multi-plate project save, the engine's own
   arrange and orient export (`tools/engine-selftest.py` prints what settles its 3MF convention), a movable prime tower, a time estimate corrected by
   history. The tower is drawn with its left-front corner at the engine's default (15, 220); the Preview draws what the engine printed.
 - Camera and keys (`slicer-scene.js`, `slicer-prepare.js` `onKey`, `slicer-keys.js`) follow Snapmaker Orca's, read from its v2.4.1 source on 22 November 2026: a left drag turns 0.8 degrees a pixel round the
@@ -117,7 +131,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   selection a head; A, Q, M, R, S, F, U, I, O, Z; arrows move 10 mm (Shift 1, Alt 0.1, Ctrl by the camera); Ctrl C, X, V, K, D, A, Z, Y, I, R, G and Ctrl Shift G; `?` lists them all. Ctrl K clones only
   with a selection, otherwise it stays the app's Find (`onKeyFirst`, bound in the capture phase because `finder.js` runs first). Tab flips Prepare and Preview only while a mouse press gave the 3D view the focus
   (`pointerFocused`), because the canvas is also a keyboard stop. The camera options (zoom to the pointer, swap the buttons, reverse the wheel, turning speed) are Orca's four. Orca's Cut, Boolean, seam and
-  fuzzy-skin painting, Text, Brim ears and Assemble keys say "not in the Slicer yet". The view is only re-framed for a first model, a new plate and an emptied one.
+  fuzzy-skin painting, Text, Brim ears and Assemble keys say "not in the Slicer yet" (C is Cut, built: `slicer-cutui.js`). The view is only re-framed for a first model, a new plate and an emptied one.
 - Filament per head (`slicer-filament.js`, `slicer-settings.js`, `slicer_working.py`): `state()["filaments"]` lists the engine's filament presets that fit the machine and whose material a head can hold
   (`tool_setup.MATERIALS`; `slicer_profiles.prepare` refuses a preset whose `filament_type` differs from the head's saved material), one row per short name, Snapmaker's first, with `stock: true` on the one
   `stock_rank` would choose for each material. `POST /api/slicer/working` takes `filament_presets` (four names, short or full, or null) and the browser keeps them in `state.preset.filaments`
@@ -129,7 +143,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 - Saved sets (`slicer-sets.js`): a set is the print preset's name, `state.overrides`, the speed, `state.preset.filaments` and `state.preset.tune`, kept in `dejavu1.slicer.sets` (30 at most) and exported as
   `{format: 'deja-vu1-slicer-settings', version: 1, ...}`. An imported file goes through `clean()`: keys must match `[a-z0-9_]` and be in `/api/slicer/schema`, values must be numbers, booleans or short strings, tune
   numbers inside `filament_limits`, the speed held to 50 to 120, the name stripped of control characters and angle brackets; what is dropped is counted and reported. Heads' colours and spools are never in a set.
-- Checks: `node tools/slicer-check.js` (88 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+- Checks: `node tools/slicer-check.js` (103 checks, 15 of them on Cut, saving a part and slicing it, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights

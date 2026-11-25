@@ -212,7 +212,8 @@
       if (opts.checkpoint !== false) this.checkpoint();
       const o = { id: this.nextId++, name: row.label || row.name, file: row.name, sourceName: row.sourceName || null, local: row.local || null, mesh: row.mesh,
         tool: Number.isInteger(row.tool) ? row.tool : 0, transform: (row.transform || IDENTITY).slice(), settings: { ...(row.settings || {}) },
-        keepColour: row.keepColour !== false, hidden: false, aside: false, plate: this.current, _b: null, _o: null };
+        keepColour: row.keepColour !== false, hidden: false, aside: false, plate: this.current, _b: null, _o: null,
+        edited: !!row.edited, srcKey: row.srcKey || null };
       this.objects.push(o);
       if (!row.transform) {
         this.centre(o);
@@ -470,12 +471,52 @@
       this.checkpoint();
       const made = [];
       const index = this.objects.indexOf(o);
-      const pieces = parts.map((mesh, i) => ({ ...o, id: this.nextId++, name: `${o.name} part ${i + 1}`, mesh, transform: o.transform.slice(), settings: { ...o.settings }, _b: null, _o: null }));
+      // A piece has a shape of its own now, so it is no longer the file it came from: the engine gets it as a file of its own (slicer-cutui.js).
+      const pieces = parts.map((mesh, i) => ({ ...o, id: this.nextId++, name: `${o.name} part ${i + 1}`, mesh, transform: o.transform.slice(), settings: { ...o.settings },
+        sourceName: null, local: null, edited: true, srcKey: null, keepColour: false, _b: null, _o: null }));
+      for (const p of pieces) p.mesh.colours = null;          // saved as plain STL files, which hold no painted colours
       this.objects.splice(index, 1, ...pieces);
       this.selected = new Set(pieces.map(p => p.id));
       for (const p of pieces) made.push(p.id);
       this.changed('split', made);
       return made;
+    }
+
+    /* Cut an object with a plane (in the world, as slicer-cut.js takes it: `n` points to the upper side, the points p with n . p = d are on it).
+       spec: { plane, keep: { upper, lower }, place: { upper, lower } }. A part that is kept becomes an object of its own whose shape is the cut shape
+       where it stands (its transform is the identity); `place` turns that part so its flat cut face lies on the plate. Returns null when the plane
+       does not go through the object, else { made: [ids], capArea, issues, shifted, volumes }. One undo step. */
+    cutObject(id, spec) {
+      const o = this.get(id), Cut = root.SlicerCut;
+      if (!o || !Cut) return null;
+      // A part is saved as a plain STL, which holds no painted colours, so the parts carry none either: what the view shows is what prints.
+      const world = worldShape(o), r = Cut.cut(world.positions, null, spec.plane), hadColour = !!o.mesh.colours;
+      const solid = (pos, vol) => pos.length >= 36 && Math.abs(vol) > 0.001;
+      if (!solid(r.upper, r.upperVolume) || !solid(r.lower, r.lowerVolume)) return null;
+      const keep = { upper: spec.keep.upper !== false, lower: spec.keep.lower !== false };
+      const kept = ['upper', 'lower'].filter(side => keep[side]);
+      if (!kept.length) return null;
+      if (this.onPlate(o.plate).length - 1 + kept.length > MAX_PER_PLATE) throw new Error(`A plate holds at most ${MAX_PER_PLATE} objects. Add another plate for the rest`);
+      this.checkpoint();
+      const n = r.normal, pieces = [], turned = [];
+      for (const side of kept) {
+        const mesh = Cut.makeMesh(side === 'upper' ? r.upper : r.lower, null);
+        const piece = { ...o, id: this.nextId++, name: `${o.name} (${side})`, mesh, transform: IDENTITY.slice(), settings: { ...o.settings }, sourceName: null, local: null,
+          edited: true, srcKey: null, keepColour: false, _b: null, _o: null };
+        if (spec.place && spec.place[side]) {
+          // the flat cut face looks along -n on the upper part and +n on the lower: turn that to face down, then stand it on the plate
+          this.around(piece, between(side === 'upper' ? n.map(v => -v) : n, [0, 0, -1]));
+          piece.transform[11] -= boundsOf(piece).min[2]; piece._b = null;
+          turned.push(piece);
+        }
+        pieces.push(piece);
+      }
+      const index = this.objects.indexOf(o);
+      this.objects.splice(index, 1, ...pieces);
+      if (pieces.length > 1) for (const p of turned) this.placeInFreeSpot(p);       // a turned part moves off its twin instead of landing on it
+      this.selected = new Set(pieces.map(p => p.id));
+      this.changed('cut', pieces.map(p => p.id));
+      return { made: pieces.map(p => p.id), capArea: r.capArea, issues: r.issues, shifted: r.shifted, volumes: { upper: r.upperVolume, lower: r.lowerVolume }, lostColours: hadColour };
     }
 
     /* ---- plates ------------------------------------------------------------------------------------------------------------------ */
@@ -548,9 +589,29 @@
     canSlice() { return this.onPlate().length > 0 && !this.onPlate().some(o => !o.hidden && this.isOutside(o)); }
 
     /* what the server needs to save this plate as a project: one row per object (see plate_project.py) */
-    rows(plate = this.current) {
-      return this.onPlate(plate).map(o => ({ name: o.sourceName || o.file, label: o.name, transform: o.transform, tool: o.tool, settings: o.settings }));
+    rows(plate = this.current, opts = {}) {
+      // An edited shape (a cut or split piece) has no file until slicer-cutui.js has saved it: no name, never the file it came from.
+      return this.onPlate(plate).filter(o => !(opts.visibleOnly && o.hidden)).map(o => ({ name: o.edited ? (o.sourceName || '') : (o.sourceName || o.file), label: o.name, transform: o.transform, tool: o.tool, settings: o.settings }));
     }
+  }
+
+  /* an object's triangles where it stands (the transform applied) with their colours; a mirrored object has its triangles turned back so they
+     still face outward */
+  function worldShape(o) {
+    const p = o.mesh.positions, m = o.transform, out = new Float32Array(p.length), col = o.mesh.colours || null;
+    const det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    for (let i = 0; i < p.length; i += 3) {
+      const x = p[i], y = p[i + 1], z = p[i + 2];
+      out[i] = x * m[0] + y * m[3] + z * m[6] + m[9]; out[i + 1] = x * m[1] + y * m[4] + z * m[7] + m[10]; out[i + 2] = x * m[2] + y * m[5] + z * m[8] + m[11];
+    }
+    let colours = col ? Float32Array.from(col) : null;
+    if (det < 0) {
+      for (let t = 0; t < out.length; t += 9) {
+        for (let k = 0; k < 3; k++) { const a = out[t + 3 + k]; out[t + 3 + k] = out[t + 6 + k]; out[t + 6 + k] = a; }
+        if (colours) for (let k = 0; k < 3; k++) { const a = colours[t + 3 + k]; colours[t + 3 + k] = colours[t + 6 + k]; colours[t + 6 + k] = a; }
+      }
+    }
+    return { positions: out, colours };
   }
 
   /* the separate shells of a mesh: triangles that share a corner belong together. Returns a mesh for each shell (positions, normals, bounds). */
@@ -575,6 +636,6 @@
     });
   }
 
-  root.SlicerModel = { orientationScore, flatFaces, PlateModel, compose, point, rotation, between, boundsOf, overhangShare, pack, connectedParts, IDENTITY, MAX_PER_PLATE };
+  root.SlicerModel = { orientationScore, flatFaces, PlateModel, compose, point, rotation, between, boundsOf, overhangShare, pack, connectedParts, worldShape, IDENTITY, MAX_PER_PLATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.SlicerModel;
 })(typeof window !== 'undefined' ? window : globalThis);

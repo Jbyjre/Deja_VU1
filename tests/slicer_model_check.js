@@ -268,5 +268,142 @@ check('mirroring flips the shape without moving its middle', () => {
   near(boundsOf(o).centre[0], c[0], 1e-4); near(boundsOf(o).size[0], 20, 1e-4);
 });
 
+/* ---- edited shapes: split and cut ---- */
+const Cut = require(path.join(__dirname, '..', 'frontend', 'slicer-cut.js'));
+const volumeOf = o => Cut.volume(M.worldShape(o).positions);
+function openEdges(positions) {          // directed edges with no partner going the other way
+  const k = (p, i) => [0, 1, 2].map(c => Math.round(p[i + c] * 1e4)).join(',');
+  const edges = new Map();
+  for (let t = 0; t < positions.length; t += 9) for (let e = 0; e < 3; e++) {
+    const a = k(positions, t + e * 3), b = k(positions, t + ((e + 1) % 3) * 3);
+    if (a !== b) edges.set(a + '>' + b, (edges.get(a + '>' + b) || 0) + 1);
+  }
+  let bad = 0;
+  for (const [id, n] of edges) { const [a, b] = id.split('>'); if (n !== 1 || edges.get(b + '>' + a) !== 1) bad++; }
+  return bad;
+}
+const cutSpec = (plane, keep = {}, place = {}) => ({ plane, keep: { upper: true, lower: true, ...keep }, place });
+
+check('split pieces are edited shapes with no file yet, and the rows never name the file they came from', () => {
+  const m = new PlateModel(), o = m.add(row('pair.stl', twoBoxes(), { sourceName: 'pair-src.stl' }));
+  const made = m.splitParts(o.id);
+  for (const id of made) { const p = m.get(id); assert.strictEqual(p.edited, true); assert.strictEqual(p.sourceName, null); assert.strictEqual(p.local, null); }
+  assert.deepStrictEqual(m.rows().map(r => r.name), ['', ''], 'no name until the shape is saved as a file');
+  m.get(made[0]).sourceName = 'cut-aa.stl';
+  assert.strictEqual(m.rows()[0].name, 'cut-aa.stl');
+  const whole = new PlateModel(), w = whole.add(row('cube.stl', boxMesh(5, 5, 5), { sourceName: 'cube-src.stl' }));
+  assert.strictEqual(w.edited, false); assert.strictEqual(whole.rows()[0].name, 'cube-src.stl', 'an untouched model still names its own file');
+});
+
+check('rows can leave out hidden objects, even when a shown one is the same file', () => {
+  const m = new PlateModel(), a = m.add(row('cube.stl', boxMesh(5, 5, 5), { sourceName: 'same.stl' })), b = m.add(row('cube.stl', boxMesh(5, 5, 5), { sourceName: 'same.stl' }));
+  m.setHidden(b.id, true);
+  assert.strictEqual(m.rows().length, 2); assert.strictEqual(m.rows(undefined, { visibleOnly: true }).length, 1);
+  assert.strictEqual(a.hidden, false);
+});
+
+check('cutting a box makes two edited parts, sized and stood on the plate, with the volume kept', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(20, 30, 40), { sourceName: 'cube-src.stl' })), before = volumeOf(o);
+  const r = m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 15 }, {}, { upper: true }));
+  assert.ok(r && r.made.length === 2 && m.objects.length === 2);
+  const up = m.objects.find(x => /\(upper\)/.test(x.name)), lo = m.objects.find(x => /\(lower\)/.test(x.name));
+  near(boundsOf(lo).size[2], 15, 1e-3); near(boundsOf(up).size[2], 25, 1e-3);
+  near(boundsOf(lo).min[2], 0, 1e-4); near(boundsOf(up).min[2], 0, 1e-4);
+  near(volumeOf(up) + volumeOf(lo), before, before * 1e-5);
+  assert.ok(up.edited && lo.edited && up.sourceName === null && lo.sourceName === null);
+  assert.deepStrictEqual(up.transform.slice(0, 9).map(v => Math.round(v)), [1, 0, 0, 0, 1, 0, 0, 0, 1], 'the top part already faces its cut down, so it is only lowered onto the plate');
+  assert.ok(m.selected.has(up.id) && m.selected.has(lo.id), 'the parts are selected');
+  assert.strictEqual(openEdges(M.worldShape(up).positions), 0); assert.strictEqual(openEdges(M.worldShape(lo).positions), 0);
+  assert.ok(m.problems().every(p => p.kind !== 'overlap'), 'the two parts are clear of each other');
+});
+
+check('a painted model is cut and split into parts that carry no colours, and the result says so', () => {
+  const mesh = boxMesh(20, 30, 40); mesh.colours = new Float32Array(mesh.positions.length).fill(0.5);
+  const m = new PlateModel(), o = m.add(row('painted.3mf', mesh));
+  const r = m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 15 }));
+  assert.strictEqual(r.lostColours, true);
+  assert.ok(m.objects.every(x => !x.mesh.colours && x.keepColour === false), 'the view shows what will print');
+  const pair = twoBoxes(); pair.colours = new Float32Array(pair.positions.length).fill(0.3);
+  const s = new PlateModel(), p = s.add(row('pair.3mf', pair));
+  s.splitParts(p.id);
+  assert.ok(s.objects.every(x => !x.mesh.colours && x.keepColour === false));
+  s.undo();
+  assert.ok(s.objects[0].mesh.colours, 'undo brings the colours back with the whole model');
+  const plain = new PlateModel(), q = plain.add(row('plain.stl', boxMesh(20, 30, 40)));
+  assert.strictEqual(plain.cutObject(q.id, cutSpec({ n: [0, 0, 1], d: 15 })).lostColours, false);
+});
+
+check('one undo puts the whole model back, with its own file', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(20, 30, 40), { sourceName: 'cube-src.stl' }));
+  m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 15 }));
+  assert.strictEqual(m.objects.length, 2);
+  m.undo();
+  assert.strictEqual(m.objects.length, 1); assert.strictEqual(m.objects[0].id, o.id); assert.strictEqual(m.objects[0].edited, false);
+  assert.strictEqual(m.rows()[0].name, 'cube-src.stl');
+  m.redo();
+  assert.strictEqual(m.objects.length, 2);
+});
+
+check('cutting with one part removed keeps only the other one, where it stood', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(20, 30, 40)));
+  const top = boundsOf(o).max[2], r = m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 15 }, { lower: false }));
+  assert.ok(r && r.made.length === 1 && m.objects.length === 1);
+  near(boundsOf(m.objects[0]).size[2], 25, 1e-3); near(boundsOf(m.objects[0]).max[2], top, 1e-4);
+  assert.strictEqual(m.cutObject(m.objects[0].id, cutSpec({ n: [0, 0, 1], d: 15 }, { lower: false, upper: false })), null, 'cutting away both parts is refused');
+});
+
+check('a plane that misses the model changes nothing and is not an undo step', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(20, 30, 40))), undo = m.undoStack.length, version = m.version;
+  assert.strictEqual(m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 400 })), null);
+  assert.strictEqual(m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 40 })), null, 'a plane along the top face only touches it');
+  assert.strictEqual(m.cutObject(999, cutSpec({ n: [0, 0, 1], d: 5 })), null);
+  assert.strictEqual(m.undoStack.length, undo); assert.strictEqual(m.version, version); assert.strictEqual(m.objects.length, 1);
+});
+
+check('a mirrored, turned and scaled model is cut into closed parts with the right volume', () => {
+  const m = new PlateModel(), o = m.add(row('a.stl', boxMesh(20, 10, 30)));
+  m.mirror(o.id, 0); m.rotateBy(o.id, 2, 33); m.scaleBy(o.id, 1.5);
+  const before = Math.abs(volumeOf(o));
+  assert.ok(volumeOf(o) > 0, 'the model stays outward-facing after the mirror');
+  const n = Cut.normalFor('x', 20, -15), c = boundsOf(o).centre, r = m.cutObject(o.id, cutSpec({ n, d: n[0] * c[0] + n[1] * c[1] + n[2] * c[2] }));
+  assert.ok(r, 'it was cut');
+  assert.ok(m.objects.length === 2 && m.objects.every(x => openEdges(M.worldShape(x).positions) === 0), 'both parts are closed');
+  near(m.objects.reduce((s, x) => s + volumeOf(x), 0), before, before * 1e-4);
+});
+
+check('a part cut at a tilt and placed cut face down stands on a flat face as large as the cut', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(30, 30, 30))), n = Cut.normalFor('z', 25, 10), c = boundsOf(o).centre;
+  const r = m.cutObject(o.id, cutSpec({ n, d: n[0] * c[0] + n[1] * c[1] + n[2] * c[2] }, {}, { upper: true, lower: true }));
+  assert.ok(r && r.made.length === 2);
+  for (const part of m.objects) {
+    const w = M.worldShape(part).positions;
+    let flat = 0;
+    for (let t = 0; t < w.length; t += 9) {
+      const z = [w[t + 2], w[t + 5], w[t + 8]], ux = w[t + 3] - w[t], uy = w[t + 4] - w[t + 1], vx = w[t + 6] - w[t], vy = w[t + 7] - w[t + 1];
+      const cz = ux * vy - uy * vx;                                       // z part of the facing; negative: the face looks down
+      if (z.every(v => Math.abs(v) < 1e-3) && cz < 0) flat += Math.abs(cz) / 2;
+    }
+    assert.ok(Math.abs(flat - r.capArea) < r.capArea * 0.01, `${part.name}: ${flat.toFixed(1)} mm² on the plate, the cut is ${r.capArea.toFixed(1)}`);
+  }
+});
+
+check('a plate at the limit refuses a cut that would add an object, and changes nothing', () => {
+  const m = new PlateModel();
+  for (let i = 0; i < M.MAX_PER_PLATE; i++) m.add(row('c' + i + '.stl', boxMesh(2, 2, 2), { transform: [1, 0, 0, 0, 1, 0, 0, 0, 1, (i % 8) * 30, Math.floor(i / 8) * 30, 0] }));
+  const id = m.objects[0].id;
+  assert.throws(() => m.cutObject(id, cutSpec({ n: [0, 0, 1], d: 1 })), /at most 32/);
+  assert.strictEqual(m.objects.length, M.MAX_PER_PLATE);
+  assert.ok(m.cutObject(id, cutSpec({ n: [0, 0, 1], d: 1 }, { upper: false })), 'removing a part keeps the count, so that cut is allowed');
+});
+
+check('pasting or duplicating an edited part keeps it an edited shape', () => {
+  const m = new PlateModel(), o = m.add(row('cube.stl', boxMesh(20, 30, 40), { sourceName: 'cube-src.stl' }));
+  m.cutObject(o.id, cutSpec({ n: [0, 0, 1], d: 15 }));
+  const copy = m.duplicate([m.objects[0].id], 1);
+  assert.strictEqual(m.get(copy[0]).edited, true);
+  const pasted = m.add(row('x.stl', m.objects[0].mesh, { edited: m.objects[0].edited, srcKey: m.objects[0].srcKey }));
+  assert.strictEqual(pasted.edited, true);
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 process.exit(failures.length ? 1 : 0);

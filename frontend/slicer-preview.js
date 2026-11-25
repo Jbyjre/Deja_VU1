@@ -24,7 +24,11 @@
       if (!res.ok) throw new Error(body.error || `${o.file} could not be saved`);
       o.sourceName = body.name; o.local = null;
     }
-    const r = await postJSON('/api/files/plate', { objects: m.rows(plate).filter(row => rows.some(o => (o.sourceName || o.file) === row.name)) });
+    // A cut or split piece is saved as a file of its own first, so the engine gets the shape that is on the plate, not the model it came from.
+    if (SL.sources) await SL.sources.ensure(rows.filter(o => o.edited));
+    const planRows = m.rows(plate, { visibleOnly: true });             // a hidden object is not printed, even when a shown one is the same file
+    if (planRows.some(row => !row.name)) throw new Error('A cut or split piece could not be saved as a file, so the plate was not sliced.');
+    const r = await postJSON('/api/files/plate', { objects: planRows });
     if (!r.ok) throw new Error(r.body.error || 'The plate could not be saved');
     return r.body.name;
   }
@@ -118,7 +122,8 @@
       const why = blocked ? ((m.problems({ overhangs: false }).find(p => p.level === 'error') || {}).text || 'A model is outside the printable area.') : '';
       info = blocked ? `<span class="sl-go-info"><b class="sl-bad">Can't slice yet</b><span id="sl-go-why">${esc(why)}</span></span>`
         : count ? `<span class="sl-go-info"><b>${count} object${count > 1 ? 's' : ''}</b><span>${sl.state === 'done' && !sl.stale && sl.result ? 'Sliced: ' + esc(timeWords(sl.result.hours)) : 'Plate ' + (m.current + 1) + (haveEngine ? '' : ' · no engine yet')}</span></span>` : '';
-      buttons = sl.state === 'done' && sl.result ? `<button type="button" class="sl-btn" id="sl-view">Preview</button>` : '';
+      buttons = count && !blocked ? `<button type="button" class="sl-btn sl-quiet" id="sl-saveproj" aria-label="Save the plate as a project" data-tip="Save the plate as a 3MF project · Ctrl S">${ic('download')}</button>` : '';
+      buttons += sl.state === 'done' && sl.result ? `<button type="button" class="sl-btn" id="sl-view">Preview</button>` : '';
       buttons += `<button type="button" class="sl-btn sl-primary" id="sl-slice"${count && !blocked ? '' : ' disabled'}${blocked ? ` title="${esc(why)}" aria-describedby="sl-go-why"` : ''}>${ic('layers')}Slice plate</button>`;
     }
     box.innerHTML = info + buttons;
@@ -130,6 +135,7 @@
     on(q('#sl-why'), 'click', explainFailure);
     on(q('#sl-print'), 'click', printPlate);
     on(q('#sl-more'), 'click', e => moreMenu(e.currentTarget));
+    on(q('#sl-saveproj'), 'click', () => saveProject3mf());
     void engine;
   }
 
@@ -176,9 +182,11 @@
     const r = sl.result, menu = document.createElement('div');
     menu.className = 'sl-menu'; menu.id = 'sl-menu'; menu.setAttribute('role', 'menu');
     menu.innerHTML = `<a role="menuitem" class="sl-mi" href="/api/files/raw?name=${encodeURIComponent(r.name)}&download=1" download>${ic('download')}Save the G-code</a>
+      <button type="button" role="menuitem" class="sl-mi" id="sl-m-project">${ic('download')}Save the project (3MF)</button>
       <button type="button" role="menuitem" class="sl-mi" id="sl-m-queue">${ic('queue')}Add to the queue</button>
       <button type="button" role="menuitem" class="sl-mi" id="sl-m-files">${ic('folder')}Show it in Files</button>`;
     q('#sl-go').append(menu);
+    on(q('#sl-m-project'), 'click', () => { menu.remove(); saveProject3mf(); });
     on(q('#sl-m-queue'), 'click', async () => { menu.remove(); const res = await postJSON(api('/api/queue/add'), { file: r.name }); say(res.ok ? 'Added to the queue.' : (res.body.error || 'It could not be queued'), res.ok ? 'ok' : 'warn'); });
     on(q('#sl-m-files'), 'click', () => { menu.remove(); if (window.Rail) Rail.goDest('files'); });
     const away = e => { if (!menu.contains(e.target) && e.target !== anchor) { menu.remove(); document.removeEventListener('pointerdown', away, true); } };
@@ -213,5 +221,19 @@
     document.body.append(a); a.click(); a.remove();
   }
 
-  SL.preview = { build, renderGo, markStale, onPage, slicePlate, savePlate, sliceKey, printKey, saveKey };
+  /* The plate as a 3MF project (Ctrl S): the models where they stand with their heads and settings, a cut or split piece as its own file. Adding that
+     file to the Slicer again puts the plate back (viewer3d.js reads DejaVu/plate.json). */
+  async function saveProject3mf() {
+    if (sl.state === 'saving' || sl.state === 'slicing') { say('The plate is being sliced.', 'info'); return null; }
+    try {
+      const name = await savePlate();
+      const a = document.createElement('a');
+      a.href = `/api/files/raw?name=${encodeURIComponent(name)}&download=1`; a.download = 'deja-vu1-plate.3mf';
+      document.body.append(a); a.click(); a.remove();
+      say('The plate is saved as a 3MF project. Add that file to the Slicer to get the plate back.', 'ok');
+      return name;
+    } catch (e) { say(e.message, 'warn'); return null; }
+  }
+
+  SL.preview = { build, renderGo, markStale, onPage, slicePlate, savePlate, sliceKey, printKey, saveKey, saveProject: saveProject3mf };
 })();

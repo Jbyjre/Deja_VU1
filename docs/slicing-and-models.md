@@ -17,12 +17,34 @@ empty plate's list, or pressing **Open in Slicer** on a model in Files. A 3MF
 saved by the Slicer comes back with its objects where they were.
 
 - **Tool strip.** Add, Delete, Arrange, Auto-orient; Move, Rotate, Scale, Lay on
-  face, Split into parts; Measure and Show overhangs; Undo and Redo. Press **?**
-  for every key. They are Snapmaker Orca's: A arranges, Q orients, M, R, S, F and
+  face, Cut, Split into parts; Measure and Show overhangs; Undo and Redo. Press **?**
+  for every key. They are Snapmaker Orca's: A arranges, Q orients, M, R, S, F, C and
   U pick the tool, 1 to 4 give the selection a head, Ctrl+C, X, V and K copy,
   cut, paste and clone, Ctrl+A selects all, Ctrl+D deletes all (Ctrl+Z brings it
-  back), Ctrl+R slices, Ctrl+G saves the G-code, Ctrl+Shift+G prints, Tab switches
-  between Prepare and Preview.
+  back), Ctrl+R slices, Ctrl+G saves the G-code, Ctrl+Shift+G prints, Ctrl+S saves
+  the plate as a 3MF project, Tab switches between Prepare and Preview.
+- **Cut.** Select a model and press **C** (or the Cut button). A plane shows in
+  the 3D view and a yellow line marks where it goes through the model. Choose
+  **Flat** (a top and a bottom part), **Front** (a back and a front part) or **Side**
+  (a right and a left part), set the height with the slider or by typing
+  millimetres, and tilt the plane up to 89° about either of the two axes that lie
+  in it. For each part choose Keep or Remove, and whether its flat cut face goes
+  on the plate (**Cut face down**). It is on for the top part by default, whose
+  cut face already looks down, so that part is only lowered; for the bottom part
+  it turns the part over. The panel says how thick each part is and how large the
+  cut face is. Cut makes each kept part an object of its own, closes the cut face
+  with a flat surface (also round a hollow inside the model) and selects the
+  parts; Ctrl+Z puts the whole model back. A plane that misses the model says so
+  and Cut stays off. Each part is saved to Files as `cut-<code>.stl` a moment
+  after the cut, and always before the plate is sliced or saved, so the engine
+  slices the parts you see. Colours painted in a 3MF are not kept in the parts
+  (an STL has none); each part prints with one head. Split into parts works the
+  same way.
+  Not in yet: pins and sockets to join the parts again, and dragging the plane in
+  the 3D view.
+- **Save project.** The download button beside Slice plate (or Ctrl+S) saves the
+  plate as a 3MF: every model where it stands, with its head and its own settings.
+  Adding that file to the Slicer puts the plate back.
 - **The view.** The left button turns the view round the selected model (or all of
   them), 0.8° a pixel, and the model stays where it is on the screen. Ctrl and the
   left button turn it round the middle of the screen. The right or middle button
@@ -109,7 +131,7 @@ Built into Deja Vu1 for now: **Arrange** is a quick packing (it names objects
 that do not fit) and **Auto-orient** picks the way up with the least overhang.
 The engine also has its own arrange and orient. They ran for real on
 22 November 2026 ([engine support](engine-support.md)), but the Slicer does not use
-them yet. Not built yet: cut,
+them yet. Not built yet: pins for cut parts,
 painting colours or supports, calibration prints and printing one object at a
 time.
 
