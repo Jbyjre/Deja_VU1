@@ -262,6 +262,12 @@ preview and heavy-model checks ran in Chromium.
   own prints, the layer a print ended on, the AI watch's notes and its first-layer check, run against the stand-in
   printer and the record (`tests/test_recall.py`, 19 tests). Files, Confirm Print and Printer › Prints with the demo
   data were checked in Chromium at 1366 px light and 390 px dark on 25 November 2026. No real U1 has run it.
+- **Replaying a print (RECALL.2):** the trace kept while a print runs (a point each layer and every 30 seconds, thinned
+  past 3,000 points, carried on after a restart, removed with its print), what a replay plays back and its routes, run
+  against the record and the live feed's own start and end (`tests/test_replay.py`, 10 tests). The replay window was
+  checked in Chromium at 1366 px light and 390 px dark on 25 November 2026 with demo prints given a trace, an AI watch
+  note, a pause and a stand-in time-lapse: the twin, the readings, the chart, the frames, Play, the scrub bar and the
+  jump to the failure. No real U1 print has been replayed yet.
 - **A second printer and other Klipper printers:** the fleet tests send one action to several
   stand-in printers at once and report each printer's own result (`tests/test_fleet_command.py`).
   A one-head 235 × 235 × 250 mm Klipper printer connects and describes its own size and heads

@@ -173,6 +173,8 @@ API endpoints
                                      the last time it worked and the last time it did not (RECALL.1)
   GET  /api/prints/repeat?file=      the print to repeat ("print it like the time it worked") and what differs now
   GET  /api/prints/facts             plain facts from the ended prints, each with the prints behind it (RECALL.3)
+  GET  /api/prints/replay            one ended print to replay: its trace, its events, its time-lapse (RECALL.2); ?id=
+  GET  /api/prints/replay/layers     that print's G-code layers for the twin, from Files or a demo sample; ?id=
   POST /api/prints/note|forget       {"id", "note"} a note on a print; {"id"} remove it from the record
   POST /api/prints/settings          {"keep_days": 30|90|365|0} how long the record is kept
   GET  /api/timelapse                recorded prints for this printer

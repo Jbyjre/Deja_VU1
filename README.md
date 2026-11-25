@@ -45,6 +45,8 @@ and overdue maintenance at the top.</sub>
   often it printed and how the last time ended, with the layer it stopped at and what the AI watch noted. Print it
   like the time it worked runs the same G-code again, and Confirm Print says which heads hold other filament now.
   Printer › Prints shows plain facts from your own prints, such as how often PETG finished, each with the prints behind it.
+  Replay plays an ended print back on the 3D twin, layer by layer, with its temperatures, its time-lapse frames and the
+  AI watch's notes on one line you can scrub, and a button that jumps to where it went wrong.
   Files are recognised by a fingerprint worked out on your computer; nothing is sent anywhere.
 - **Watch a live 3D twin.** A model of the U1 follows the print: the head on the gantry, the bed
   dropping as layers build, the spools in their colours, and the print itself, drawn from the

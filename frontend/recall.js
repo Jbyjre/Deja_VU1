@@ -105,6 +105,7 @@ window.Recall = (() => {
         ${opts.differences && !opts.differences.length && opts.checked ? '<p class="recall-same">The heads it used hold the same filament as the time it worked.</p>' : ''}
         <div class="recall-tools">
           ${canRepeat ? `<button class="btn small primary" type="button" data-recall-repeat="${esc(file)}">Print it like the time it worked</button>` : ''}
+          ${info.last.id && /\.gcode$/i.test(info.last.file || '') ? `<button class="btn small" type="button" data-recall-replay="${esc(info.last.id)}">Replay the last print</button>` : ''}
           ${info.prints && info.prints.length ? `<button class="btn small" type="button" data-recall-show="${esc(file)}">${info.prints.length === 1 ? 'Show that print' : 'Show those prints'}</button>` : ''}
         </div>
       </div></div>`;
@@ -129,9 +130,10 @@ window.Recall = (() => {
     if (host.dataset.recallBound) return;
     host.dataset.recallBound = '1';
     host.addEventListener('click', e => {
-      const b = e.target.closest('[data-recall-repeat], [data-recall-show]');
+      const b = e.target.closest('[data-recall-repeat], [data-recall-show], [data-recall-replay]');
       if (!b) return;
       if (b.dataset.recallRepeat) { repeat(b.dataset.recallRepeat, b); return; }
+      if (b.dataset.recallReplay) { if (window.Replay) Replay.open(b.dataset.recallReplay, b); return; }
       const dialog = b.closest('dialog');
       if (dialog && dialog.open) { if (window.Workshop && Workshop.closeDialog) Workshop.closeDialog(dialog); else dialog.close(); }
       const known = cache.get(b.dataset.recallShow);
