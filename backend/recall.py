@@ -25,6 +25,7 @@ import threading
 
 import file_library
 import print_record
+import print_track
 
 _lock = threading.Lock()
 _cache = {}                      # name -> (size, mtime, fingerprint)
@@ -230,6 +231,79 @@ def facts(demo=False, history=None, printer_id=None, printer_name=None):
         if early:
             out.append({"kind": "first_layers", "early": len(early), "count": len(failed), "prints": [e["id"] for e in early]})
     return {"facts": out, "needs": MIN_PRINTS_FOR_A_FACT, "ended": len(entries)}
+
+
+def _layers_from(e, demo):
+    """Where a replay's layers come from: this computer's copy of the G-code, a built-in sample (demo), or nowhere."""
+    name = e.get("file") or ""
+    if file_library.kind_of(name) != "gcode":
+        return None
+    if e.get("in_library"):
+        return "library"
+    if demo:
+        import sample_files
+        if name in sample_files.SAMPLES or name in sample_files.LEGACY:
+            return "sample"
+    return None
+
+
+def _pauses(track):
+    """The points where the trace went from printing to paused: [(seconds, layer)]."""
+    out, was = [], 0
+    for p in (track or {}).get("points") or []:
+        if len(p) >= 8 and p[7] and not was:
+            out.append((p[0], p[1]))
+        was = p[7] if len(p) >= 8 else 0
+    return out
+
+
+def replay(entry_id, demo=False, history=None, printer_id=None, printer_name=None):
+    """
+    What a replay of one ended print plays back (RECALL.2): the print, the trace kept while it ran (temperatures, layers,
+    time-lapse frames; None when none was kept), what happened along the way (the AI watch's notes, pauses, how it ended)
+    and where its layers and frames come from. Everything is from the record; nothing is filled in.
+    """
+    e = print_record.get(entry_id, demo, history, printer_id, printer_name)
+    if e.get("status") == "running":
+        raise ValueError("This print is still running: watch it live on the Printer screen")
+    track = print_track.load(entry_id) if not e.get("from_printer") else None
+    layer = e.get("layer") or {}
+    traced = [p[1] for p in (track or {}).get("points") or [] if len(p) > 1 and isinstance(p[1], int)]
+    total = layer.get("total") or None
+    stop = layer.get("current") or (max(traced) if traced else None)
+    if e.get("status") == "finished" and total:
+        stop = total
+    events = []
+    for n in e.get("watch") or []:
+        at = (n.get("layer") or {}).get("current") if isinstance(n.get("layer"), dict) else None
+        events.append({"kind": "watch", "layer": at, "at": n.get("at"), "verdict": n.get("verdict"), "text": n.get("why")})
+    for t, at in _pauses(track):
+        events.append({"kind": "pause", "layer": at, "seconds": t})
+    if e.get("status") in ("failed", "cancelled"):
+        events.append({"kind": "end", "layer": layer.get("current"), "status": e.get("status"), "text": e.get("ended_because")})
+    tl = None
+    if e.get("timelapse"):
+        import modules
+        import timelapse
+        if modules.is_enabled("timelapse"):
+            try:
+                frames = timelapse.frames(e.get("printer"), e["timelapse"])
+                if frames:
+                    tl = {"session": e["timelapse"], "printer": e.get("printer"), "frames": frames}
+            except (ValueError, OSError):
+                tl = None
+    return {"print": _short(e), "file": e.get("file"), "layers": _layers_from(e, demo), "track": track,
+            "events": events, "total_layers": total, "stop_layer": stop, "timelapse": tl}
+
+
+def replay_layers(entry_id, demo=False, history=None, printer_id=None, printer_name=None):
+    """The G-code's layers for the twin (print_preview's form), from this computer's copy or a built-in sample."""
+    import print_preview
+    e = print_record.get(entry_id, demo, history, printer_id, printer_name)
+    where = _layers_from(e, demo)
+    if where is None:
+        return {"file": e.get("file"), "reason": f"{e.get('file') or 'This file'} isn't in Files any more, so its layers can't be drawn"}
+    return print_preview.for_library(e["file"], allow_sample=(where == "sample"))
 
 
 def reset():

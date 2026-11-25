@@ -206,20 +206,21 @@ async function openForm(id, quiet) {
     /* Signing in from here: ChatGPT through OpenAI's Sign in with ChatGPT, Claude through Claude Code's own sign-in. */
     function signHTML(q) {
       if (q.kind === 'account') {
-        if (q.signed_in && !q.plan_use) return '<p class="ai-step-help">You signed in, but plan use wasn’t allowed. Press Continue with ChatGPT and allow it on the page that opens.</p>' + signButtons(q);
+        if (q.signed_in && !q.plan_use) return '<p class="ai-step-help">You signed in, but plan use wasn’t allowed. Press Try again and allow plan use, and allow it on the page that opens.</p>' + signButtons(q);
         return signButtons(q);
       }
       return `<p class="ai-step-help">Claude Code is on this computer${q.version ? ` (${esc(q.version)})` : ''} but isn’t signed in yet. The Claude desktop app keeps its own sign-in, so Claude Code signs in once by itself: press Sign in and approve it in your browser.</p>${signButtons(q)}`;
     }
     function signButtons(q) {
       const waiting = signing && signing.running;
-      const label = q.kind === 'account' ? 'Continue with ChatGPT' : 'Sign in with Claude';
+      const label = q.kind !== 'account' ? 'Sign in with Claude' : q.signed_in && !q.plan_use ? 'Try again and allow plan use' : 'Continue with ChatGPT';
       return `<div class="ai-sign">
         <div class="ai-actions"><button class="btn primary" id="ai-sign" type="button">${waiting ? 'Open the sign-in page again' : label}</button>
           ${q.kind === 'cli' && !waiting ? '<button class="btn" id="ai-probe" type="button">I’m already signed in</button>' : ''}</div>
         ${waiting ? `<p class="ai-hint">${q.kind === 'account' ? 'Approve Deja Vu1 in the ChatGPT page that opened. This screen updates by itself.' : 'Approve it in the page that opened. If the page shows a code, paste it here.'}</p>
+          ${q.kind === 'account' && signing.port_busy ? `<p class="ai-hint">Port 1455 is in use by another program on this computer, often another app’s ChatGPT sign-in, so this sign-in comes back on port ${+signing.port}.</p>` : ''}
           <label class="ai-field"><span>${q.kind === 'account' ? 'On another device? Paste the address the browser ended on' : 'Code from the sign-in page'}</span>
-            <span class="ai-paste"><input id="ai-paste" type="text" autocomplete="off" spellcheck="false" placeholder="${q.kind === 'account' ? 'http://127.0.0.1:1455/auth/callback?code=…' : 'Paste the code'}"><button class="btn" id="ai-paste-go" type="button">Finish</button></span></label>` : ''}
+            <span class="ai-paste"><input id="ai-paste" type="text" autocomplete="off" spellcheck="false" placeholder="${q.kind === 'account' ? `http://127.0.0.1:${+(signing.port || 1455)}/auth/callback?code=…` : 'Paste the code'}"><button class="btn" id="ai-paste-go" type="button">Finish</button></span></label>` : ''}
       </div>`;
     }
     const say = (text, kind) => { const s = slot.querySelector('#ai-status'); if (s) { s.textContent = text; s.dataset.kind = kind || ''; } };
@@ -263,7 +264,7 @@ async function openForm(id, quiet) {
         const out = await signin('start');
         sign.disabled = false;
         if (!out) { if (tab) tab.close(); return; }
-        signing = { url: out.url || '', running: true };
+        signing = { url: out.url || '', running: true, port: out.port, port_busy: !!out.port_busy };
         if (account && out.url) { if (tab) tab.location.href = out.url; else window.open(out.url, '_blank', 'noopener'); }
         draw();
         say(account ? 'Waiting for you to approve it in ChatGPT…' : out.url ? 'Waiting for you to approve it in the browser…' : 'Claude Code is opening the sign-in page…');
@@ -592,17 +593,87 @@ function openChat(id) {
 
 async function saveWatch(host) {
     const v = id => host.querySelector(id);
+    const policy = {};
+    host.querySelectorAll('[name=ai-watch-pol]').forEach(sel => { policy[sel.dataset.sev] = sel.value; });
     const body = { on: v('#ai-watch-on').checked, first_layer: v('#ai-watch-first').checked, compare: v('#ai-watch-compare').checked,
-      pause: v('#ai-watch-pause').checked, confirm: v('#ai-watch-confirm').checked, notify: v('#ai-watch-notify').checked,
+      last_layers: v('#ai-watch-last').checked, confirm: v('#ai-watch-confirm').checked,
+      picture: v('#ai-watch-picture').checked, policy,
       looks: [...host.querySelectorAll('[name=ai-watch-look]:checked')].map(i => i.value),
       notes: v('#ai-watch-notes').value };
     const min = host.querySelector('[name=ai-watch-min]:checked'), sense = host.querySelector('[name=ai-watch-sense]:checked');
     if (min) body.minutes = +min.value;
     if (sense) body.sensitivity = sense.value;
+    if (v('#ai-watch-ai')) body.ai = v('#ai-watch-ai').value;
     if (!body.looks.length) { toast('Pick at least one thing to look for', 'warn'); return; }
     if (aiState.st.demo) { Object.assign(aiState.st.watch, body); drawPage(); return; }
     const res = await postJSON('/api/assistant/watch', body);
     if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
+  }
+
+/* A rehearsal: frames taken from a time-lapse video in the browser, each judged by the AI with the owner's policy (AI.1).
+ * Frames go one at a time as JPEG pictures of at most 1280 px, so each stays well under the server's request limit. */
+async function rehearse(host, file) {
+    const out = host.querySelector('#ai-rehearse-state');
+    const pick = host.querySelector('#ai-rehearse-file');
+    const say = t => { if (out) out.textContent = t; };
+    if (aiState.st.demo) { toast('A rehearsal needs your own AI connected. The online demo has none.', 'info'); return; }
+    if (!aiState.st.ready) { toast('Connect an AI first', 'info'); return; }
+    const n = +(host.querySelector('#ai-rehearse-n') || {}).value || 12;
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    if (pick) pick.disabled = true;
+    let done = 0, trouble = 0;
+    try {
+      await new Promise((ok, bad) => { video.onloadeddata = ok; video.onerror = () => bad(new Error('This browser can’t open that video')); video.src = url; });
+      if (!isFinite(video.duration) || video.duration <= 0) throw new Error('That video has no length to take frames from');
+      const scale = Math.min(1, 1280 / (video.videoWidth || 1280));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round((video.videoWidth || 1280) * scale);
+      canvas.height = Math.round((video.videoHeight || 720) * scale);
+      const ctx = canvas.getContext('2d');
+      for (let i = 0; i < n; i++) {
+        await new Promise(ok => { video.onseeked = ok; video.currentTime = video.duration * (i + 0.5) / n; });
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        say(`Looking at frame ${i + 1} of ${n}…`);
+        const res = await postJSON('/api/assistant/watch/rehearse', { frame: canvas.toDataURL('image/jpeg', 0.82), label: `frame ${i + 1} of ${n}`, name: file.name });
+        if (!res.ok) throw new Error(res.body.error || 'The AI didn’t answer');
+        done++;
+        if (res.body.verdict !== 'ok') trouble++;
+      }
+      say(trouble ? `Done: ${done} frames judged, ${trouble} worth a look. They are under Recent looks.` : `Done: ${done} frames judged and all looked fine. They are under Recent looks.`);
+    } catch (err) {
+      say(done ? `Stopped after ${done} frames: ${err.message}` : err.message);
+    } finally {
+      URL.revokeObjectURL(url);
+      if (pick) { pick.disabled = false; pick.value = ''; }
+    }
+    if (done) {
+      const keep = out ? out.textContent : '';
+      await refresh();
+      const again = document.getElementById('ai-rehearse-state');
+      if (again) again.textContent = keep;
+      const hist = document.getElementById('ai-watch-history');
+      if (hist) hist.open = true;
+    }
+  }
+
+async function judgeLook(btn) {
+    const look = btn.dataset.judge;
+    const judged = btn.getAttribute('aria-pressed') === 'true' ? 'clear' : btn.dataset.j;
+    if (aiState.st.demo) {
+      const e = (aiState.st.watch.log || []).find(x => x.id === look);
+      if (e) e.judged = judged === 'clear' ? null : judged;
+      drawPage();
+      return;
+    }
+    const res = await postJSON('/api/assistant/watch/judge', { look, judged });
+    if (!res.ok) { toast(res.body.error || 'That was not saved', 'bad'); return; }
+    aiState.st.watch = res.body;
+    drawPage();
+    toast(judged === 'clear' ? 'Mark taken off' : judged === 'ignore' ? 'It will treat things like this as normal' : 'The next looks will learn from this', 'ok');
   }
 
 async function feature(id, withPhoto) {
@@ -630,7 +701,7 @@ function wirePage() {
     const host = document.getElementById('ai-page');
     if (!host) return;
     const post = async body => {
-      if (aiState.st.demo) { if (body.mode) aiState.st.mode = body.mode; return; }
+      if (aiState.st.demo) { if (body.mode) aiState.st.mode = body.mode; if (body.talk) { aiState.st.talk = body.talk; drawPage(); } return; }
       const res = await postJSON('/api/assistant/select', body);
       if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
     };
@@ -645,8 +716,11 @@ function wirePage() {
     });
     host.addEventListener('change', async e => {
       const t = e.target;
+      if (t.id === 'ai-rehearse-file') { if (t.files && t.files[0]) rehearse(host, t.files[0]); return; }
+      if (t.id === 'ai-rehearse-n') return;
       if (t.closest('#ai-watch-card')) { saveWatch(host); return; }
       if (t.name === 'ai-mode-page') post({ mode: t.value });
+      if (t.name === 'ai-talk-page') post({ talk: t.value });
     });
     host.addEventListener('click', async e => {
       const t = e.target;
@@ -655,6 +729,8 @@ function wirePage() {
         if (res.ok) take(res.body);
         return;
       }
+      const mark_ = t.closest('[data-judge]');
+      if (mark_) { judgeLook(mark_); return; }
       const now_ = t.closest('#ai-watch-now');
       if (now_) {
         if (aiState.st.demo) { toast('Check now needs a real printer’s camera. Demo printers have none.', 'info'); return; }

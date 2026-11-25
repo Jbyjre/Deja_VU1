@@ -73,7 +73,9 @@ API endpoints
   POST /api/assistant/estimate|budget   tokens and cost before sending; the owner's prices and spending limit
   POST /api/assistant/watch          print watch: a camera check by the AI every few minutes while a real printer prints
   POST /api/assistant/watch/now      print watch: look through a real printer's camera now
-  GET  /api/assistant/watch/picture  the last picture print watch studied for ?printer=
+  POST /api/assistant/watch/judge    print watch: mark a look right or wrong, or ignore things like it
+  POST /api/assistant/watch/rehearse print watch: judge one frame of a recorded time-lapse, as if live
+  GET  /api/assistant/watch/picture  the last picture print watch studied for ?printer=, or one look's with ?look=
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
@@ -173,6 +175,8 @@ API endpoints
                                      the last time it worked and the last time it did not (RECALL.1)
   GET  /api/prints/repeat?file=      the print to repeat ("print it like the time it worked") and what differs now
   GET  /api/prints/facts             plain facts from the ended prints, each with the prints behind it (RECALL.3)
+  GET  /api/prints/replay            one ended print to replay: its trace, its events, its time-lapse (RECALL.2); ?id=
+  GET  /api/prints/replay/layers     that print's G-code layers for the twin, from Files or a demo sample; ?id=
   POST /api/prints/note|forget       {"id", "note"} a note on a print; {"id"} remove it from the record
   POST /api/prints/settings          {"keep_days": 30|90|365|0} how long the record is kept
   GET  /api/timelapse                recorded prints for this printer

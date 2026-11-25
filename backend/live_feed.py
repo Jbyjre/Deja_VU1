@@ -43,6 +43,7 @@ import logbook
 import mock_moonraker
 import print_queue
 import print_record
+import print_track
 import recall
 import timelapse
 
@@ -263,6 +264,8 @@ def _detect_locked(printer_id, state, finish_event):
     events = _print_events(before, state["state"])
     if resumed and modules.is_enabled("timelapse"):
         timelapse.resume(printer_id, state.get("current_file"))
+    if resumed:
+        print_track.resume(printer_id, state.get("current_file"))
     side_effects = (not simulated) or demo_active()
 
     for name in events:
@@ -329,7 +332,9 @@ def _record_print(printer_id, name, state, finish_event, payload, simulated):
             entry = print_record.started(printer_id, mock_moonraker.printer_name(printer_id), state, job, simulated)
             if entry.get("file"):
                 recall.start_in_background(entry["id"], entry["file"])   # the file's fingerprint, off the 250 ms tick
+            print_track.begin(printer_id, entry["id"], time.time())       # the trace a replay plays back (RECALL.2)
             return entry["id"]
+        print_track.end(printer_id, state, time.time(), timelapse.frames_taken(printer_id))
         job = (finish_event or {}).get("job") if name == "finished" else None
         cost = (payload.get("summary") or {}).get("cost")
         entry = print_record.ended(printer_id, name, {**state, "printer_name": mock_moonraker.printer_name(printer_id)},
@@ -485,6 +490,7 @@ def _side_effects(printer_id, state, count, simulated, side_effects, now):
                 # A printer that does not say its layer still gets frames, by time (timelapse.GAP_SECONDS).
                 timelapse.request_camera(printer_id, layer if isinstance(layer, int) else None)
 
+    print_track.sample(printer_id, state, now, timelapse.frames_taken(printer_id))
     samples = _climate.setdefault(printer_id, deque(maxlen=CHAMBER_SAMPLES))
     if not samples or now - samples[-1]["t"] >= CHAMBER_SAMPLE_SECONDS:
         samples.append({"t": round(now, 1), "chamber": state.get("chamber_temperature"),

@@ -252,7 +252,7 @@ class TestSettings(unittest.TestCase):
         block = APP[APP.index("  modules: ["):APP.index("const SECTION_KEY")]
         groups = re.findall(r"^\s{4}\['([a-z]+)', '([^']+)'", block, re.M)
         self.assertEqual([g[1] for g in groups], ["Printers & connection", "Look & layout", "Phone & away", "Alerts & smart home", "Tester mode",
-                                                  "Updates", "Advanced", "Help"])
+                                                  "Updates", "Plugins", "Advanced", "Help"])
 
     def test_preferences_is_folded_in_and_demo_data_is_in_advanced(self):
         self.assertIn("prefs: 'modules'", APP)

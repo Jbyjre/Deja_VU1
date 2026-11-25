@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND = os.path.join(ROOT, "frontend")
 
 # Scripts that are not the app's words: the recording of the online demo, a generated report, a worker.
-SKIP_FILES = {"sw.js", "versions.js", "theme-boot.js", "slicer-gcode-worker.js", "tester.js", "tester-study.js"}
+SKIP_FILES = {"sw.js", "theme-boot.js", "slicer-gcode-worker.js", "tester.js", "tester-study.js"}
 SKIP_DIRS = {"demo", "media", "fonts", "img", "strings"}
 PAGES = ("index.html",)                           # the app; welcome.html is the product page and has its own words
 

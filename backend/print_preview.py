@@ -397,6 +397,23 @@ def _library_text(name):
     return file_library.read_bytes(name).decode("utf-8", "surrogateescape")
 
 
+def for_library(name, allow_sample=False):
+    """The preview of a file in Files (or, when allowed, a built-in sample): a replay draws an ended print from it."""
+    import os
+    import file_library
+    import sample_files
+    try:
+        path = file_library._path(name)
+        st = os.stat(path)
+        return {**for_file(name, _library_text(name), "library", (st.st_size, st.st_mtime_ns)), "file": name}
+    except (ValueError, OSError, LookupError):
+        pass
+    if allow_sample and str(name).lower().endswith(".gcode") and (name in sample_files.SAMPLES or name in sample_files.LEGACY):
+        text = sample_files.build(name).decode("utf-8")
+        return {**for_file(name, text, "sample", len(text)), "file": name}
+    return {"file": name, "reason": f"{name} isn't in Files any more, so its layers can't be drawn"}
+
+
 def for_current(file=None):
     """
     The preview of whatever the selected printer is printing now.

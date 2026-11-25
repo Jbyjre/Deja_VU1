@@ -982,7 +982,7 @@ class TestPrintWatch(Base):
     def test_an_alert_goes_out_when_asked(self):
         sent = []
         ai_assistant.watch_settings(on=True, notify=True)
-        with patch.object(ai_assistant.notifications, "notify", lambda m, p="normal": sent.append((m, p))):
+        with patch.object(ai_assistant.notifications, "notify", lambda m, p="normal", picture=None: sent.append((m, p))):
             made = self.tick('{"verdict": "worry", "why": "A blob near T1."}')
         self.assertTrue(made[0]["alerted"])
         self.assertIn("A blob near T1.", sent[0][0])

@@ -513,12 +513,14 @@ function ruleForm() {
           : a === 'home_assistant' ? `<input type="text" id="rf-entity" value="sensor.dejavu1_alert" aria-label="Entity"> <input type="text" id="rf-state" value="on" aria-label="State" style="width:90px">`
             : a === 'macro' ? `<input type="text" id="rf-macro" placeholder="LIGHT_OFF" aria-label="Macro name" style="text-transform:uppercase"> <span class="log-empty">As the printer lists it under Printer → Printer's own buttons</span>`
               : a === 'cool_down' ? '<span class="log-empty">Sets every head and the bed to off on the printer that triggered the rule. Never while it prints.</span>'
+              : a.startsWith('plugin:') ? '<span class="log-empty">Runs the plugin’s own commands. Until you allow the real printer in Settings, Plugins, they go to the practice printer.</span>'
               : a === 'ai_look' ? '<label class="rf-check"><input type="checkbox" id="rf-ai-pause" checked> Pause the print if it clearly failed</label> <span class="log-empty">Your AI studies one camera picture, and a second one before it pauses. The result shows in What fired and on the AI screen.</span>'
                 : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
     };
     $('rf-trigger').addEventListener('change', tparams);
     $('rf-action').addEventListener('change', aparams);
     tparams(); aparams();
+    addPluginActions($('rf-action'));
     $('rf-demo-note').textContent = demoOn ? 'Demo data is on, so this rule will only watch the simulated printers, and anything it sends is marked "[Demo data]".' : 'This rule will watch real, connected printers.';
     qsa('[data-preset]', form).forEach(b => b.addEventListener('click', () => {
       const p = PRESETS[+b.dataset.preset].rule;
@@ -542,7 +544,7 @@ function ruleForm() {
       if (t === 'state') trigger.event = $('rf-event').value;
       if (t === 'maintenance_overdue') trigger.task = $('rf-task').value;
       if (['progress', 'time_left', 'layer'].includes(t)) trigger.value = +$('rf-value').value;
-      const action = { type: a };
+      const action = a.startsWith('plugin:') ? { type: 'plugin', plugin: a.split(':')[1], action: a.split(':')[2] } : { type: a };
       if (a === 'notify') Object.assign(action, { message: $('rf-message').value, priority: $('rf-priority').value });
       if (a === 'light') action.color = $('rf-color').value;
       if (a === 'home_assistant') Object.assign(action, { entity_id: $('rf-entity').value, state: $('rf-state').value });
@@ -554,6 +556,21 @@ function ruleForm() {
       if (r.ok) { $('rf-name').value = ''; loadRules(); }
     };
   }
+
+// Each action a switched-on plugin offers becomes one more choice under Then.
+async function addPluginActions(select) {
+  const r = await getJSON('/api/plugins').catch(() => null);
+  if (!r || !Array.isArray(r.plugins) || !select.isConnected) return;
+  const opts = [];
+  r.plugins.filter(p => p.on && !p.broken).forEach(p => (p.actions || []).forEach(a => {
+    opts.push(`<option value="plugin:${esc(p.id)}:${esc(a.id)}">${esc(pluginActionText(p.name, a.name))}</option>`);
+  }));
+  if (opts.length) select.insertAdjacentHTML('beforeend', opts.join(''));
+}
+
+function pluginActionText(plugin, action) {
+  return `Run “${action}” from ${plugin}`;
+}
 
 async function loadRules() {
     const host = $('rule-list');

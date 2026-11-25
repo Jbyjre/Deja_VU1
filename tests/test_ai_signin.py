@@ -105,6 +105,8 @@ class OpenAI(BaseHTTPRequestHandler):
         if self.path == "/v1/responses":
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))
             s["request"] = body
+            if s.get("refuse"):
+                return self.reply(*s["refuse"])
             s["auth"] = self.headers.get("Authorization")
             events = s.get("events") or [
                 {"type": "response.output_text.delta", "delta": "Hello"},
@@ -254,6 +256,59 @@ class SignInWithChatGPT(unittest.TestCase):
         with self.assertRaises(ai_providers.AIError) as no:
             ai_providers.ask("chatgpt", "gpt-plan-1", "x", [{"role": "user", "text": "Hi"}])
         self.assertIn("allowance for apps is used up", str(no.exception))
+
+
+    def test_each_kind_of_refusal_says_its_own_words(self):
+        said = {"invalid_scope": "didn't offer the permissions", "unauthorized_client": "register again",
+                "server_error": "problem on its side", "temporarily_unavailable": "busy right now",
+                "login_required": "sign in on its page", "consent_required": "approve Deja Vu1"}
+        for code, words in said.items():
+            with self.assertRaises(ai_signin.SignInError) as no:
+                ai_signin.finish_chatgpt(self.back(self.start(), error=code))
+            self.assertIn(words, str(no.exception), code)
+        with self.assertRaises(ai_signin.SignInError) as no:
+            ai_signin.finish_chatgpt(self.back(self.start(), error="something_new", error_description="Odd thing"))
+        self.assertEqual(str(no.exception), "ChatGPT said: Odd thing")          # an unknown one is passed on as said
+        with self.assertRaises(ai_signin.SignInError) as no:
+            ai_signin.finish_chatgpt(self.back(self.start(), code="used-code"))
+        self.assertIn("ran out or was already used", str(no.exception))
+        OpenAI.state["scope"] = "openid profile email offline_access"
+        ai_signin.finish_chatgpt(self.back(self.start()))
+        self.assertIn("Try again and allow plan use", ai_providers.describe("chatgpt")["signin_error"])
+
+    def test_a_plan_that_cant_be_shared_is_not_called_a_bad_sign_in(self):
+        ai_signin.finish_chatgpt(self.back(self.start()))
+        refusal = {"error": {"code": "subscription_sharing_user_not_eligible", "message": "Plan usage is unavailable."}}
+        OpenAI.state["refuse"] = (403, refusal)
+        with self.assertRaises(ai_providers.AIError) as no:
+            ai_providers.ask("chatgpt", "gpt-plan-1", "x", [{"role": "user", "text": "Hi"}])
+        self.assertIn("signing in again won't help", str(no.exception))
+        self.assertNotIn("Press Continue with ChatGPT to sign in again", str(no.exception))
+        OpenAI.state.pop("refuse")
+        OpenAI.state["events"] = [{"type": "response.failed", "response": refusal}]
+        with self.assertRaises(ai_providers.AIError) as no:
+            ai_providers.ask("chatgpt", "gpt-plan-1", "x", [{"role": "user", "text": "Hi"}])
+        self.assertIn("signing in again won't help", str(no.exception))
+        OpenAI.state.pop("events")
+        OpenAI.state["refuse"] = (429, {"error": {"code": "subscription_sharing_usage_limit_exceeded"}})
+        with self.assertRaises(ai_providers.AIError) as no:
+            ai_providers.ask("chatgpt", "gpt-plan-1", "x", [{"role": "user", "text": "Hi"}])
+        self.assertIn("ChatGPT, Settings, Usage", str(no.exception))
+
+    def test_a_busy_port_is_said_and_another_one_used(self):
+        import socket
+        blocker = socket.socket()
+        blocker.bind(("127.0.0.1", 0))               # a port this test holds stands in for 1455, so another program
+        blocker.listen(1)                            # letting go of the real one mid-test can't change the answer
+        self.addCleanup(blocker.close)
+        held = blocker.getsockname()[1]
+        with patch.object(ai_signin, "PORT", held):
+            started = ai_signin.start_chatgpt()
+        self.addCleanup(ai_signin._stop_listener)
+        self.assertTrue(started["port_busy"])
+        self.assertNotEqual(started["port"], held)
+        redirect = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(started["url"]).query))["redirect_uri"]
+        self.assertEqual(redirect, f"http://127.0.0.1:{started['port']}/auth/callback")
 
 
 CLAUDE = """#!/bin/sh

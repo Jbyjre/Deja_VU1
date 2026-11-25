@@ -269,6 +269,45 @@ Known literal out-of-volume startup extrusion is now refused during profile
 creation. The entire output is still checked against 270 × 270 × 270 mm. No
 physical purge-region exception has been established.
 
+## Finding models and bringing them in
+
+**Models, Find a model.** Type what you want and press Search: a new tab opens with results from the sites you
+starred (MakerWorld, Printables and Thingiverse start starred; Cults, MyMiniFactory, Thangs, Yeggi and GrabCAD are a
+press away). Each site's tile searches only that site. When Printables is the only starred site the search uses
+Printables' own search page; otherwise it is one web search limited to the starred sites, because the other sites'
+own search addresses could not be checked. Model sites refuse to be shown inside another page, so they always open
+in their own tab, signed in as you, and Deja Vu1 sends them nothing but your search words. Stars and your last six
+searches stay in this browser only. Snapmaker's wiki, forum and store are listed under Snapmaker.
+
+**Models, Bring it in.** Download a model the usual way. With Watch my Downloads on, each new `.3mf`, `.stl`, `.obj`
+or `.zip` that lands in your Downloads folder (or a folder you choose) is offered on any screen within about two
+seconds: Open in Slicer, Keep in Files, or Not this one.
+
+- Only files that arrive after you switch it on are offered. The folder is only read: nothing in it is moved,
+  changed or deleted.
+- The page asks for new files while it is open and visible, so nothing watches the folder while Deja Vu1 is closed.
+- Only the computer running Deja Vu1 can switch the watcher on, choose its folder or take a file from it. A phone or
+  another computer sees whether it is on, never the folder's path or the names of the files in it.
+- A `.zip` is unpacked with the same checks as a 3MF: at most 20 model files, each up to 64 MB, everything else left
+  out.
+- **Or paste a link to a model file:** `https://` links only, to public sites only (never this computer or your home
+  network, including after a redirect), up to 64 MB. A link to a model's web page is refused with a note to use the
+  page's download button instead.
+
+Every model brought in keeps where it came from, shown under its name in Files: the site and page (from the pasted
+link, or the address Windows or Linux recorded with the download), and the designer, title and licence when a 3MF's
+own metadata says them. Reading the page Windows records beside a download (its Zone.Identifier note) has not run on
+Windows yet; macOS does not record it in a form Deja Vu1 reads, so there only the
+3MF's own credits show.
+
+**Colours on the heads.** Open a project with more than one colour in Files and its colours panel lists each filament with a head. With a printer connected, Match the printer's heads sends each colour to the closest loaded spool, and under each colour a line says how well the chosen head fits: a close colour, a similar shade to check, or a different colour (with the head that is closer, or a note to load the colour first), and whether that head holds another material. When the colour checker has a fresh, calibrated reading of a head, that measured colour is used instead of the one the printer reports, and the line says so. The bands are Deja Vu1's own: a different shade of the same colour counts as similar, another colour as different.
+
+**Files, search and sort.** With two or more files, the library has a search box (a file's name, its materials, or
+the designer and site a model came from) and a sort: newest first, last used first, by name, or longest print first.
+The sort is remembered on that device. A model under 10 mm across carries a May be in inches tag, and its panel says
+to open it in the Slicer and press Scale × 25.4 on the warning there. A 3MF project with more than one plate says how
+many. Print time and filament from inside a sliced 3MF are not read yet.
+
 ## Models and project fidelity
 
 Sources are immutable; editing stores transforms separately. Save-as includes

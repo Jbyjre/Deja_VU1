@@ -57,27 +57,72 @@ function renderLocalFiles() {
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b));
   }
 
+  /* Search and sort for the library (MODELS.3). The sort is remembered on this device. */
+  const FILE_SORT_KEY = 'dejavu1.files.sort';
+  const fileView = { q: '', sort: (() => { try { return localStorage.getItem(FILE_SORT_KEY) || 'new'; } catch (_) { return 'new'; } })() };
+  const tinyModel = s => !!(s && s.size_mm && Math.max(...s.size_mm) > 0 && Math.max(...s.size_mm) < 10);
+
+function shownFiles(list) {
+    const q = fileView.q.trim().toLowerCase();
+    const out = q ? list.filter(f => {
+      const s = f.summary || {}, src = f.source || {};
+      return [f.name, f.note, src.designer, src.site, src.title, ...(s.materials || [])].filter(Boolean).join(' ').toLowerCase().includes(q);
+    }) : list.slice();
+    const used = f => (f.last_opened || '') > (f.last_printed || '') ? f.last_opened || '' : f.last_printed || '';
+    const hours = f => (f.summary && f.summary.estimated_hours != null) ? f.summary.estimated_hours : -1;
+    if (fileView.sort === 'name') out.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    else if (fileView.sort === 'used') out.sort((a, b) => used(b).localeCompare(used(a)));
+    else if (fileView.sort === 'long') out.sort((a, b) => hours(b) - hours(a));
+    return out;
+  }
+
+function wireFileTools() {
+    const q = $('file-q'), sort = $('file-sort');
+    if (!q || q.dataset.wired) return;
+    q.dataset.wired = '1';
+    sort.value = fileView.sort;
+    if (sort.value !== fileView.sort) { fileView.sort = 'new'; sort.value = 'new'; }
+    q.addEventListener('input', () => { fileView.q = q.value; renderFileGrid(); });
+    sort.addEventListener('change', () => {
+      fileView.sort = sort.value;
+      try { localStorage.setItem(FILE_SORT_KEY, sort.value); } catch (_) {}
+      renderFileGrid();
+    });
+  }
+
 async function loadFiles() {
     const grid = $('file-grid');
     if (!grid) return;
     const data = await getJSON('/api/files').catch(() => null);
-    if (data && data.server_missing) { renderLocalFiles(); return; }
-    if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; return; }
+    if (data && data.server_missing) { if ($('file-tools')) $('file-tools').hidden = true; renderLocalFiles(); return; }
+    if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; if ($('file-tools')) $('file-tools').hidden = true; return; }
     files.list = (data && data.files) || [];
     if ($('convert-card')) $('convert-card').hidden = modGate.off.has('converter');
     $('file-recent').innerHTML = data && data.recent && data.recent.length
       ? `<span class="fr-label">Recent</span>${data.recent.map(n => `<button class="chip-btn" data-open-file="${esc(n)}" type="button">${esc(n)}</button>`).join('')}` : '';
-    grid.innerHTML = files.list.length ? files.list.map(f => {
+    wireFileTools();
+    renderFileGrid();
+  }
+
+function renderFileGrid() {
+    const grid = $('file-grid');
+    if (!grid) return;
+    if ($('file-tools')) $('file-tools').hidden = files.list.length < 2;
+    const shown = shownFiles(files.list);
+    grid.innerHTML = files.list.length && !shown.length
+      ? `<p class="log-empty">No file matches "${esc(fileView.q.trim())}". Try part of its name, a material such as PETG, or a designer.</p>`
+      : files.list.length ? shown.map(f => {
       const s = f.summary || {};
       const verdict = s.preflight ? `<span class="pf-badge ${s.preflight}">${{ clear: 'Pre-flight clear', check: 'Check warnings', blocked: 'Blocked' }[s.preflight]}</span>` : '';
       const meta = f.kind === 'gcode'
         ? `${fmtHours(s.estimated_hours)} · ${s.filament_grams != null ? s.filament_grams.toFixed(1) + ' g' : '—'} · ${(s.tools_used || []).join(' ')}`
-        : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
+        : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(s.size_mm.some(x => x < 10) ? 1 : 0)).join(' × ')} mm · ${s.plates > 1 ? `${s.plates} plates` : `${(s.triangles || 0).toLocaleString()} triangles`}` : (s.error || ''));
+      const tiny = f.kind !== 'gcode' && tinyModel(s) ? '<span class="pf-badge check">May be in inches</span>' : '';
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
           <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
-          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate' }[f.origin] || f.origin)}</span>` : ''}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${tiny}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate', download: 'from the web' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
     }).join('') : `<button type="button" class="file-empty" id="file-empty">
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -116,7 +161,15 @@ async function openFile(name, fromEl) {
     if (window.Recall && !entry.local) Recall.intoFiles(recallHost, name);   // printed before: how it went
     else recallHost.hidden = true;
     const s = entry.summary || {};
-    $('fd-sub').textContent = entry.note || ({ sample: 'Sample file', converted: 'Converted for the Snapmaker U1', edited: 'Edited here', upload: 'Uploaded' }[entry.origin] || '');
+    $('fd-sub').textContent = entry.note || ({ sample: 'Sample file', converted: 'Converted for the Snapmaker U1', edited: 'Edited here', upload: 'Uploaded', download: 'Brought in from the web' }[entry.origin] || '');
+    // Where a model came from (models.js), so its designer is always credited.
+    const credit = $('fd-source');
+    if (credit) { credit.innerHTML = entry.source && window.Models ? Models.sourceHtml(entry.source) : ''; credit.hidden = !credit.innerHTML; }
+    if (entry.kind !== 'gcode' && tinyModel(s)) {
+      const across = Math.max(...s.size_mm).toFixed(1);
+      const warn = `It's only ${across} mm across, so it may have been drawn in inches. Open it in the Slicer and press Scale × 25.4 on its warning.`;
+      $('fd-sub').textContent = $('fd-sub').textContent ? `${$('fd-sub').textContent}. ${warn}` : warn;
+    }
     $('fd-side').innerHTML = '<p class="log-empty">Reading the file…</p>';
     $('fd-gcode').hidden = entry.kind !== 'gcode';
     $('fd-view-tools').innerHTML = '';
@@ -341,6 +394,23 @@ async function renderColours(entry) {
     let plan = (data.suggested || []).slice();
     files.colourPlan = fil.length > HEAD_COUNT ? plan : null;
     const swatch = (c, label) => `<span class="cm-swatch${c ? '' : ' is-empty'}" style="--sw:${esc(c || 'transparent')}" aria-hidden="true"></span><span class="sr-only">${esc(label || '')}</span>`;
+    // How well the chosen head's loaded spool fits this colour, in words (COLOUR.1). Each sentence is one string.
+    const fitNote = (f, h) => {
+      const row = data.fit && data.fit[String(f.n)];
+      const fit = row && h != null ? row[h] : null;
+      if (!fit) return '';
+      const n = h + 1, measured = fit.source === 'sensor';
+      let say = '';
+      if (fit.level === 'unknown') say = `What head ${n} holds isn't known.`;
+      else if (fit.level === 'close') say = measured ? `Head ${n} holds a close colour, measured by the colour checker.` : `Head ${n} holds a close colour, as the printer reports it.`;
+      else if (fit.level === 'near') say = measured ? `Head ${n} holds a similar shade, measured by the colour checker. Check it looks right.` : `Head ${n} holds a similar shade, as the printer reports it. Check it looks right.`;
+      else {
+        const better = row.filter(x => x.level === 'close' || x.level === 'near').map(x => x.head + 1);
+        say = better.length ? `Head ${n} holds a different colour. Head ${better[0]} is closer.` : `Head ${n} holds a different colour, and no loaded head is close. Load this colour before printing.`;
+      }
+      const other = fit.other_material ? `<span>Head ${n} holds another material.</span>` : '';
+      return `<span class="cm-fit is-${esc(fit.level)}"><span>${esc(say)}</span>${other}</span>`;
+    };
     const headsOf = () => {
       const heads = [];
       for (let h = 0; h < HEAD_COUNT; h++) {
@@ -366,7 +436,7 @@ async function renderColours(entry) {
               <span class="cm-hname">Head ${x.h + 1}</span>
               <span class="cm-hwhat">${x.lead ? `${esc(x.lead.name)}${x.lead.type ? ` · ${esc(x.lead.type)}` : ''}` : 'Not used'}</span>
               ${x.members.length > 1 ? `<span class="cm-hfrom">filaments ${x.members.map(f => f.n).join(' + ')}</span>` : ''}
-              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, 'Loaded now')} loaded</span>` : ''}
+              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, '')}${data.loaded[x.h].source === 'sensor' ? `<span>measured</span>` : `<span>loaded</span>`}</span>` : ''}
             </li>`).join('')}
           </ol>
           <div class="cm-rows" role="list">
@@ -379,6 +449,7 @@ async function renderColours(entry) {
                 <option value="">${f.used ? 'Choose a head' : 'Leave out'}</option>
                 ${Array.from({ length: HEAD_COUNT }, (_, h) => `<option value="${h}"${plan[i] === h ? ' selected' : ''}>Head ${h + 1}</option>`).join('')}
               </select>
+              ${f.used ? fitNote(f, plan[i]) : ''}
             </div>`).join('')}
           </div>
           ${mixed.length ? `<p class="cm-warn" role="alert">Head ${mixed.map(x => x.h + 1).join(' and ')} would get different materials, which print at different temperatures. Choose another head for one of them.</p>` : ''}
@@ -406,7 +477,10 @@ async function renderColours(entry) {
         plan = ((b.dataset.cm === 'match' ? data.matched : data.suggested) || []).slice();
         files.colourPlan = plan.slice();
         draw();
-        toast(b.dataset.cm === 'match' ? 'Each colour now goes to the closest loaded head' : 'Alike colours now share a head', 'ok');
+        const anyMeasured = (data.loaded || []).some(x => x && x.source === 'sensor');
+        toast(b.dataset.cm !== 'match' ? 'Alike colours now share a head'
+          : anyMeasured ? "Each colour now goes to the closest loaded head, by the colour checker's readings where it has them"
+            : 'Each colour now goes to the closest loaded head', 'ok');
         return;
       }
       if (typeof tourOn === 'function' && tourOn()) { toast('Saving a copy needs the local Deja Vu1 app. The public demo is a recording.', 'warn'); return; }

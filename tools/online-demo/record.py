@@ -53,12 +53,16 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 # Snapmaker's guides are their text, read from their wiki when asked; the demo points to the wiki instead (app.js tourGet).
                 "/api/errors/guide",
                 # Tester mode is off in the demo: its card shows labelled sample figures and a sample report page instead.
-                "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study"}
+                "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study",
+                # A plugin's pane: the demo holds only the built-in Print cost plugin, which has no pane.
+                "/api/plugins/pane"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
             "/api/colours/plan": "name", "/api/print/preview": "file", "/api/prints/recall": "file",
             "/api/prints/repeat": "file"}
 EVERY_FILE = ("/api/files/plates", "/api/colours/plan", "/api/prints/recall", "/api/prints/repeat")   # models and G-code alike
+# Routes that need a print from the record: one answer for each ended G-code print in the demo history.
+PER_PRINT = ("/api/prints/replay", "/api/prints/replay/layers")
 # Parameters that don't change the answer, so they aren't part of the key.
 IGNORED = {"demo", "since", "v", "t", "_", "device"}
 # Routes the dashboard asks with set parameters, and each set it uses.
@@ -186,6 +190,13 @@ def record():
                             if a != b:
                                 params = {"demo": 1, "printer": pid, "a": a, "b": b}
                                 keep(key_for(path, params), *srv.get(path, **params))
+                    continue
+                if path in PER_PRINT:
+                    _, listing = srv.get("/api/prints", demo=1, printer=pid)
+                    for row in listing.get("prints", []) if isinstance(listing, dict) else []:
+                        if row.get("status") != "running" and str(row.get("file") or "").endswith(".gcode"):
+                            params = {"demo": 1, "printer": pid, "id": row["id"]}
+                            keep(key_for(path, params), *srv.get(path, **params))
                     continue
                 if path in PER_FILE:
                     for name in (names if path in EVERY_FILE else gcode):

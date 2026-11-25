@@ -630,6 +630,7 @@ const SECTIONS = {
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
     ['tester', 'Tester mode', ['#tester-card']],
     ['updates', 'Updates', ['#version-card', '#desktop-card', '#about-card']],
+    ['plugins', 'Plugins', ['#plugins-card']],
     ['advanced', 'Advanced', ['#demo-card', '#demo-tools-card', '#memory-card', 'optional extras']],
     ['help', 'Help', ['.setup-settings']],
   ],

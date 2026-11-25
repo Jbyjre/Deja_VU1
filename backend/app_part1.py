@@ -18,6 +18,8 @@ import colour_map
 import companion_sensor
 import comparison
 import cost_calculator
+import plugins
+import model_inbox
 import desktop
 import discovery
 import engine_installer
@@ -128,6 +130,14 @@ def _live_snapshot():
 # Routes that return printer figures, gated by connection/demo, each mapped
 # to the module that owns them (checked before connection) and the function
 # that produces the data. Each gets the parsed query string.
+def _cost_read(read):
+    """The cost calculator runs as a built-in plugin: reading the printer for it needs that permission."""
+    if not plugins.granted("cost-calculator", "printer.read"):
+        raise PermissionError("Not allowed: the Print cost plugin hasn't been granted \"" +
+                              plugins.PERMISSIONS["printer.read"] + "\". You can grant it in Settings, Plugins")
+    return read()
+
+
 _DATA_ROUTES = {
     "/api/tools/compatibility": ("printer_control", lambda q: tool_setup.compatibility()),
     "/api/printer/problems": ("error_help", lambda q: logbook.problems_view()),
@@ -156,8 +166,8 @@ _DATA_ROUTES = {
     "/api/compare/side-by-side": ("compare", lambda q: comparison.side_by_side()),
     "/api/sanity": ("sanity_check", lambda q: sanity_check.check()),
     "/api/updates": ("updates", lambda q: updates.get_status()),
-    "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
-    "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.current_job()),
+    "/api/cost/history": ("cost_calculator", lambda q: {"jobs": _cost_read(cost_calculator.cost_history)}),
+    "/api/cost/current": ("cost_calculator", lambda q: _cost_read(cost_calculator.current_job)),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
     "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
     "/api/fleet": ("fleet", lambda q: _fleet_rows(_demo(q))),
@@ -208,6 +218,9 @@ _APP_ROUTES = {
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
+    "/api/plugins": (None, lambda q: plugins.listing()),
+    "/api/plugins/pane": (None, lambda q: plugins.pane(_q(q, "id"))),
+    "/api/models/inbox": ("file_library", lambda q: model_inbox.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
@@ -248,6 +261,8 @@ _APP_ROUTES = {
     "/api/prints/recall": (None, lambda q: _recall(q, recall.about)),
     "/api/prints/repeat": (None, lambda q: _recall(q, recall.like_last_time)),
     "/api/prints/facts": (None, lambda q: _recall_facts(q)),
+    "/api/prints/replay": (None, lambda q: _replay(q, recall.replay)),
+    "/api/prints/replay/layers": (None, lambda q: _replay(q, recall.replay_layers)),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
@@ -301,6 +316,12 @@ def _recall_facts(q):
     return recall.facts(_demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
 
 
+def _replay(q, ask):
+    """RECALL.2: one ended print to play back on the twin, or its G-code's layers."""
+    pid = mock_moonraker.selected_printer_id()
+    return ask(_q(q, "id"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
+
+
 def _tester_study(q):
     """The tester's progress, and with ?questions=1 the 22 questions, the saved answers and what the app saw next to each."""
     info = tester_study.describe()
@@ -331,9 +352,20 @@ def _loaded_heads(demo=False):
     for i in range(colour_map.HEADS):
         h = heads.get(f"T{i}") or {}
         known = h.get("filament_known", True) and h.get("filament_loaded") is not False
-        out.append({"toolhead": f"T{i}", "colour": colour_map.clean_hex(h.get("filament_color_hex")) if known else None,
-                    "type": (h.get("filament_material") or "") if known else ""})
+        colour = colour_map.clean_hex(h.get("filament_color_hex")) if known else None
+        source = "printer" if colour else None
+        measured = None if demo else _measured_colour(f"T{i}")
+        if measured:
+            colour, source = measured, "sensor"
+        out.append({"toolhead": f"T{i}", "colour": colour, "type": (h.get("filament_material") or "") if known else "",
+                    "source": source})
     return out if any(h["colour"] for h in out) else None
+
+
+def _measured_colour(toolhead):
+    """The colour checker's fresh, calibrated reading for a head, or None (never a stale or uncertain one)."""
+    view = companion_sensor.read(toolhead) or {}
+    return colour_map.clean_hex(view.get("detected_hex")) if view.get("status") == "reading" else None
 
 
 def _colour_plan(name, demo=False):
@@ -342,6 +374,7 @@ def _colour_plan(name, demo=False):
     loaded = _loaded_heads(demo)
     info["suggested"] = colour_map.suggest(info["filaments"])
     info["matched"] = colour_map.suggest(info["filaments"], loaded) if loaded else None
+    info["fit"] = colour_map.head_fit(info["filaments"], loaded) if loaded else None
     info["loaded"] = loaded
     info["heads"] = colour_map.HEADS
     return info

@@ -15,6 +15,7 @@ import webrtc_relay
 import file_library
 import live_feed
 import mock_moonraker
+import model_inbox
 import modules
 import pairing
 import print_record
@@ -76,6 +77,10 @@ class GetRoutes:
             if refused:
                 body["printer_refused"] = True
             return self._send_json(body, status=409 if refused else 502)
+        except PermissionError as exc:
+            # A plugin, or a feature that runs as one, asked for something it hasn't been granted.
+            self._note_refusal(403, str(exc))
+            return self._send_json({"error": str(exc), "not_allowed": True}, status=403)
         except ValueError as exc:
             if self.path.startswith(("/api/printer/control/", "/api/fleet/broadcast")):
                 self._note_refusal(400, str(exc))
@@ -155,7 +160,11 @@ class GetRoutes:
         if route == "/api/assistant/watch/picture":
             if self._module_blocked("ai_assistant"):
                 return None
-            seen = ai_assistant.watch_picture(query.get("printer", [""])[0])
+            look = query.get("look", [""])[0]
+            try:
+                seen = ai_assistant.watch_look_picture(look) if look else ai_assistant.watch_picture(query.get("printer", [""])[0])
+            except ValueError as error:
+                return self._send_json({"error": str(error)}, status=400)
             if not seen:
                 return self._send_json({"error": "No picture yet"}, status=404)
             return self._send_bytes(seen[0], seen[1])
@@ -203,6 +212,11 @@ class GetRoutes:
                 return None
             filename, data = tester_report.build_zip()
             return self._send_bytes(data, "application/zip", filename=filename)
+
+        if route == "/api/models/inbox":
+            if self._module_blocked("file_library"):
+                return None
+            return self._send_json(model_inbox.status(here=self._this_computer()))
 
         if route in _APP_ROUTES:
             module_id, producer = _APP_ROUTES[route]

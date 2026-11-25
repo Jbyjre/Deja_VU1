@@ -446,6 +446,30 @@ function watchCamHost() {
     return watchCam;
   }
 
+const TALK_NAME = { short: 'Short', normal: 'Normal', detailed: 'Detailed' };
+const TALK_HINT = {
+  short: 'One or two lines a reply, unless you ask for more. Fewer words also cost less on a paid key.',
+  normal: 'About five short lines a reply, unless you ask for more.',
+  detailed: 'The reasons and the readings behind each answer, in short paragraphs. Longer replies cost more on a paid key.'
+};
+
+/* How much it says in chat (AI.3). */
+function talkCard() {
+    const t = aiState.st.talk || 'normal';
+    return `<details class="card liquid-glass ai-mini" id="ai-talk"><summary><h2>How much it says</h2><span>${esc(TALK_NAME[t])}</span></summary>
+          <div class="ai-seg" role="radiogroup" aria-label="How much it says">${['short', 'normal', 'detailed'].map(k => `<label><input type="radio" name="ai-talk-page" value="${k}"${k === t ? ' checked' : ''}><span>${esc(TALK_NAME[k])}</span></label>`).join('')}</div>
+          <p class="ai-hint">${esc(TALK_HINT[t])}</p></details>`;
+}
+
+/* Which connected AI does the looking (AI.3): a cheaper or quicker one can watch while another answers chat. */
+function watchAI(w) {
+    const joined = aiState.st.connections || [];
+    if (joined.length < 2) return '';
+    const pick = joined.some(c => c.id === w.ai) ? w.ai : '';
+    return `<div class="ai-pol"><label class="ai-pol-row"><span><b>Which AI looks</b><small>Each look costs what that AI charges for one picture</small></span>
+          <select id="ai-watch-ai"><option value=""${pick ? '' : ' selected'}>Same as chat</option>${joined.map(c => `<option value="${esc(c.id)}"${c.id === pick ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label></div>`;
+}
+
 function drawPage() {
     const host = document.getElementById('ai-page');
     if (!host || host.closest('[hidden]')) return;
@@ -499,6 +523,7 @@ function connectedPage() {
         <details class="card liquid-glass ai-mini" id="ai-private"><summary><h2>Privacy</h2><span>What leaves this computer</span></summary>
           <p class="ai-hint">The AI you choose receives what you type, the printer’s readings, the results of its steps and any photo you attach. A camera picture goes only when it looks through the camera. Conversations are saved on this computer only. A model on this computer keeps everything at home.</p>
           <p class="ai-hint">${(aiState.st.tools || []).length || 'A fixed set of'} named steps are its only way to reach the printer, and every one passes the same checks as the buttons.</p></details>
+        ${talkCard()}
       </section>`;
   }
 
@@ -521,14 +546,23 @@ function costCard() {
 
 function demoWatch() {
     const w = (aiState.st && aiState.st.watch && aiState.st.watch.looks_known) ? aiState.st.watch : {};
-    return Object.assign({ on: true, minutes: 10, pause: true, first_layer: true, compare: true, confirm: true, notify: false,
+    return Object.assign({ on: true, minutes: 10, pause: true, first_layer: true, last_layers: true, compare: true, confirm: true, notify: true,
+      policy: { cosmetic: 'note', fixable: 'notify', failing: 'pause', crash: 'decide' }, lessons: [],
+      severities: ['cosmetic', 'fixable', 'failing', 'crash'], actions: ['note', 'notify', 'pause', 'decide'],
       looks: ['spaghetti', 'detached', 'blob', 'layer_shift'], sensitivity: 'normal', notes: '', minutes_range: [2, 60],
       looks_known: { spaghetti: 'loose strands like spaghetti, or plastic laid in mid-air', detached: 'a part knocked loose, moved or toppled on the bed', blob: 'a large blob of plastic building up around a nozzle', layer_shift: 'layers suddenly offset sideways', warping: 'corners or edges lifting off the bed', stringing: 'fine strings between parts' },
-      log: [{ at: Date.now() / 1000 - 240, verdict: 'ok', why: 'Clean walls, both parts still stuck down.', printer_name: 'Demo printer 1', reason: 'every 10 minutes' },
-        { at: Date.now() / 1000 - 1500, verdict: 'ok', why: 'The first layer is down evenly.', printer_name: 'Demo printer 1', reason: 'first layers' }],
+      log: [{ id: 'demo000001', at: Date.now() / 1000 - 240, verdict: 'ok', severity: 'none', why: 'Clean walls, both parts still stuck down.', printer_name: 'Demo printer 1', reason: 'every 10 minutes', confidence: 0.9, action: 'none',
+          reasoning: 'Compared with the picture ten minutes ago the walls are taller and straight, and both parts sit where they started. No strings or blobs near the nozzles.' },
+        { id: 'demo000002', at: Date.now() / 1000 - 840, verdict: 'worry', severity: 'cosmetic', why: 'Thin strings between the two towers.', printer_name: 'Demo printer 1', reason: 'every 10 minutes', confidence: 0.7, action: 'note',
+          reasoning: 'A few fine strings cross the gap between the towers. They are light and the walls under them are clean, so the parts will be fine after a quick clean-up.', action_why: 'Your policy for a cosmetic flaw: note it.' },
+        { id: 'demo000003', at: Date.now() / 1000 - 1500, verdict: 'ok', severity: 'none', why: 'The first layer is down evenly.', printer_name: 'Demo printer 1', reason: 'first layers', confidence: 0.85, action: 'none',
+          reasoning: 'The first lines are flat and joined, with no gaps and no corners lifting.' }],
       usage: {}, pictures: [], next_in_s: {} }, w);
   }
 
+const SEV_NAME = { cosmetic: 'Cosmetic flaw', fixable: 'Fixable problem', failing: 'Failing print', crash: 'Crash risk' };
+const SEV_HINT = { cosmetic: 'Light strings, a small blemish', fixable: 'A corner starting to lift', failing: 'Spaghetti, a part knocked loose', crash: 'Plastic around a nozzle, a head dragging' };
+const ACT_NAME = { note: 'Note it', notify: 'Send an alert', pause: 'Pause and ask', decide: 'Let the AI decide' };
 const LOOK_NAME = { spaghetti: 'Spaghetti', detached: 'Knocked loose', blob: 'Nozzle blob', layer_shift: 'Layer shift', warping: 'Warping', stringing: 'Stringing' };
 function watchCard() {
     const w = Object.assign({ looks: [], looks_known: {}, log: [], usage: {}, pictures: [], next_in_s: {}, minutes_range: [2, 60] }, aiState.st.watch || {});
@@ -542,8 +576,9 @@ function watchCard() {
     const next = Object.values(w.next_in_s || {})[0];
     const state = !w.on ? 'Off' : next != null ? `Watching · next look in ${Math.max(1, Math.round(next / 60))} min` : `On · every ${w.minutes} min while printing`;
     const minutes = [2, 5, 10, 15, 30, 60].filter(m => m >= w.minutes_range[0] && m <= w.minutes_range[1]);
-    const log = (w.log || []).slice(0, 5).map(e => `<li class="ai-watch-${esc(e.verdict)}"><b>${esc(word[e.verdict] || e.verdict)}</b>
-      <span>${esc(e.printer_name || e.printer || '')} · ${when(e.at)}${e.reason ? ` · ${esc(e.reason)}` : ''}${e.paused ? ' · paused' : ''}</span><p>${esc(e.why || '')}</p></li>`).join('');
+    const pol = Object.assign({ cosmetic: 'note', fixable: 'note', failing: 'note', crash: 'note' }, w.policy || {});
+    const acts = Object.values(pol);
+    const log = (w.log || []).slice(0, 8).map(watchLook).join('');
     const u = w.usage || {};
     const toggle = (id, on, label, hint) => `<label class="ai-tog"><input type="checkbox" id="${id}"${on ? ' checked' : ''}><span><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span></label>`;
     return `<section class="card liquid-glass ai-watch" id="ai-watch-card">
@@ -554,7 +589,9 @@ function watchCard() {
           <p class="ai-watch-state${w.on ? ' is-on' : ''}" aria-live="polite">${esc(state)}</p>
           <label class="ai-bigswitch"><input type="checkbox" id="ai-watch-on" role="switch"${w.on ? ' checked' : ''}><span class="ai-bigswitch-track" aria-hidden="true"><i></i></span><span>Watch my prints through the camera</span></label>
           <ul class="ai-watch-sum" aria-label="How it is set">${[`Every ${w.minutes} min`, w.first_layer && 'First layers', w.compare && 'Compares pictures',
-            w.pause ? (w.confirm ? 'Looks twice, then pauses' : 'Pauses a failure') : 'Tells you, never pauses', w.notify && 'Sends alerts',
+            w.last_layers && 'Last layers',
+            acts.includes('pause') ? (w.confirm ? 'Looks twice, then pauses' : 'Pauses a failure') : !acts.includes('decide') && 'Tells you, never pauses',
+            acts.includes('decide') && 'The AI decides some', acts.some(a => a === 'notify' || a === 'decide') && 'Sends alerts',
             w.sensitivity !== 'normal' && `${w.sensitivity[0].toUpperCase() + w.sensitivity.slice(1)}`].filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
           <div class="ai-actions"><button class="btn" type="button" id="ai-watch-now">${I.camera}<span>Check now</span></button></div>
           ${aiState.st.demo ? '<p class="ai-hint">In the online demo these settings are a preview: print watch needs a real printer’s camera.</p>' : ''}
@@ -577,15 +614,48 @@ function watchCard() {
             <h3>What to look for</h3><div class="ai-looks">${Object.keys(w.looks_known || {}).map(k => `<label class="ai-look"><input type="checkbox" name="ai-watch-look" value="${esc(k)}"${(w.looks || []).includes(k) ? ' checked' : ''}><span>${esc(LOOK_NAME[k] || k)}</span></label>`).join('')}</div></div>
           <div>${toggle('ai-watch-first', w.first_layer, 'Check the first layers', 'An extra look early on, where most prints fail')}
             ${toggle('ai-watch-compare', w.compare, 'Compare with the last picture', 'Spots a print that stopped growing: a clog or an empty spool')}
-            ${toggle('ai-watch-pause', w.pause, 'Pause a clear failure', 'Watch-only mode and the safety checks still apply')}
-            ${toggle('ai-watch-confirm', w.confirm, 'Look twice before pausing', 'A second picture must agree, so one odd frame never stops a print')}
-            ${toggle('ai-watch-notify', w.notify, 'Send me an alert', 'Through the channels in Settings, Alerts')}</div>
+            ${toggle('ai-watch-last', w.last_layers, 'Check the last layers', 'One look near the end, where a tall print can topple')}
+            ${toggle('ai-watch-confirm', w.confirm, 'Look twice before pausing', 'A second picture must agree, so one odd frame never stops a print')}</div>
         </div>
+        ${watchAI(w)}
+        <h3>What it does about each kind of problem</h3>
+        <div class="ai-pol">${['cosmetic', 'fixable', 'failing', 'crash'].map(k => `<label class="ai-pol-row"><span><b>${esc(SEV_NAME[k])}</b><small>${esc(SEV_HINT[k])}</small></span>
+          <select name="ai-watch-pol" data-sev="${k}">${['note', 'notify', 'pause', 'decide'].map(a => `<option value="${a}"${pol[k] === a ? ' selected' : ''}>${esc(ACT_NAME[a])}</option>`).join('')}</select></label>`).join('')}</div>
+        ${toggle('ai-watch-picture', w.picture !== false, 'Add the picture to alerts', 'ntfy.sh keeps it for 3 hours, and anyone who knows your topic name can open it')}
+        <p class="ai-hint">Alerts go through the channels in Settings, Alerts. A pause happens only while printing, and watch-only mode and the safety checks still apply. Print watch can pause a print but never cancels or starts one. When the AI decides, it says why in each look.</p>
         <label class="ai-field"><span>Notes for it <i>about your setup, up to 300 characters</i></span><textarea id="ai-watch-notes" rows="2" maxlength="300" placeholder="The mark on the left of the sheet is old; ignore it.">${esc(w.notes || '')}</textarea></label>
       </details>
-      ${log ? `<details class="ai-watch-more" id="ai-watch-history"><summary>Recent looks${I.chevron}</summary><ul class="ai-watch-log">${log}</ul>
+      ${log ? `<details class="ai-watch-more" id="ai-watch-history"><summary>Recent looks${I.chevron}</summary>
+        <p class="ai-hint">Mark a look right or wrong, or tell it to ignore things like it. The next looks get your marks as examples.</p>
+        <ul class="ai-watch-log">${log}</ul>
         ${u.checks ? `<p class="ai-hint">${u.checks} look${u.checks === 1 ? '' : 's'} so far${u.cost_usd ? `, about $${u.cost_usd.toFixed(u.cost_usd < 0.01 ? 4 : 2)}` : ''}.</p>` : ''}</details>` : ''}
+      <details class="ai-watch-more" id="ai-watch-rehearse"><summary>Try it on a recorded time-lapse${I.chevron}</summary>
+        <p class="ai-hint">Pick a time-lapse video of an earlier print. Your browser takes frames from it and your AI judges each one as if the print were running, with the policy above. Nothing is paused or sent. The looks show under Recent looks as rehearsals, so you can mark them right or wrong. Each frame costs the same as one look while printing.</p>
+        <div class="ai-actions ai-rehearse"><label class="ai-rehearse-n"><span>Frames</span><select id="ai-rehearse-n">${[6, 12, 24].map(n => `<option value="${n}"${n === 12 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label class="btn" id="ai-rehearse-pick">${I.camera}<span>Choose a video</span><input class="sr-only" type="file" id="ai-rehearse-file" accept="video/*"></label></div>
+        <p class="ai-rehearse-state" id="ai-rehearse-state" aria-live="polite"></p></details>
     </section>`;
+  }
+
+const DID = { note: 'Noted it', notify: 'Sent you an alert', pause: 'Paused the print' };
+const WOULD = { note: 'Would have noted it', notify: 'Would have sent an alert', pause: 'Would have paused' };
+function watchLook(e) {
+    const when = new Date(e.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const word = { ok: 'Looks fine', worry: 'Worth a look', failed: 'Looks failed', skipped: 'Not checked' };
+    const did = !e.action || e.action === 'none' ? '' : e.rehearsal ? WOULD[e.action]
+      : e.action === 'pause' && !e.paused ? 'Left it running' : e.action === 'notify' && e.alerted === false ? 'The alert couldn’t be sent' : DID[e.action];
+    const pic = e.picture && e.id && !aiState.st.demo
+      ? `<img class="ai-watch-thumb" loading="lazy" alt="What it saw at ${esc(when)}" src="/api/assistant/watch/picture?look=${encodeURIComponent(e.id)}">` : '';
+    const why = [e.reasoning, e.action_why, e.confidence != null ? `How sure: ${Math.round(e.confidence * 100)}%` : ''].filter(Boolean);
+    const judge = e.id && e.verdict !== 'skipped' ? `<div class="ai-watch-judge" role="group" aria-label="Was this look right?">${[['right', 'Correct'], ['wrong', 'Wrong'], ['ignore', 'Ignore things like this']]
+      .map(([k, label]) => `<button type="button" class="chip-btn" data-judge="${esc(e.id)}" data-j="${k}" aria-pressed="${e.judged === k}">${esc(label)}</button>`).join('')}</div>` : '';
+    return `<li class="ai-watch-${esc(e.verdict)}${pic ? ' has-pic' : ''}">${pic}<div>
+      <b>${esc(word[e.verdict] || e.verdict)}</b>${e.severity && SEV_NAME[e.severity] ? ` <em class="ai-sev is-${esc(e.severity)}">${esc(SEV_NAME[e.severity])}</em>` : ''}${e.rehearsal ? ' <em class="ai-sev">Rehearsal</em>' : ''}
+      <span>${esc(e.printer_name || e.printer || '')} · ${esc(when)}${e.reason ? ` · ${esc(e.reason)}` : ''}</span><p>${esc(e.why || '')}</p>
+      ${did ? `<p class="ai-watch-did">${esc(did)}</p>` : ''}
+      ${e.paused && !e.rehearsal ? '<p class="ai-watch-did">The print is paused. <a href="#/printer">Resume or cancel it on the Printer screen.</a></p>' : ''}
+      ${why.length ? `<details class="ai-watch-why"><summary>Why</summary>${why.map(t => `<p>${esc(t)}</p>`).join('')}</details>` : ''}
+      ${judge}</div></li>`;
   }
 
   /* ---- shortcuts around the app -------------------------------------------

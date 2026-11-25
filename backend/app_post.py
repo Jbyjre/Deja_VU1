@@ -38,6 +38,8 @@ import mock_moonraker
 import modules
 import notifications
 import pairing
+import plugins
+import model_inbox
 import photo_studio
 import memory
 import orca_import
@@ -104,18 +106,22 @@ class PostRoutes:
                     return self._send_json(ai_assistant.forget(body.get("provider")))
                 if verb == "select":
                     return self._send_json(ai_assistant.select(body.get("provider"), body.get("model"), body.get("mode"),
-                                                               body.get("never_ask")))
+                                                               body.get("never_ask"), body.get("talk")))
                 if verb == "budget":
                     return self._send_json(ai_assistant.budget(body.get("provider"), body.get("model"), body.get("price_in"),
                                                                body.get("price_out"), body.get("cap_usd"),
                                                                bool(body.get("clear_price"))))
                 if verb == "watch":
-                    extra = {k: body.get(k) for k in ("first_layer", "compare", "confirm", "notify", "looks",
-                                                      "sensitivity", "notes")}
+                    extra = {k: body.get(k) for k in ("first_layer", "last_layers", "compare", "confirm", "picture", "notify",
+                                                      "looks", "sensitivity", "notes", "policy", "ai")}
                     return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"),
                                                                        body.get("pause"), **extra))
                 if verb == "watch/now":
                     return self._send_json(ai_assistant.watch_now(body.get("printer") or printer_id))
+                if verb == "watch/judge":
+                    return self._send_json(ai_assistant.watch_judge(body.get("look"), body.get("judged")))
+                if verb == "watch/rehearse":
+                    return self._send_json(ai_assistant.watch_rehearse(body.get("frame"), body.get("label"), body.get("name")))
                 if verb == "estimate":
                     return self._send_json(ai_assistant.estimate(body.get("thread"), body.get("text"), printer_id, demo,
                                                                  body.get("context")))
@@ -764,6 +770,56 @@ class PostRoutes:
             device_id = route[len("/api/pairing/devices/"):-len("/unpair")]
             devices = pairing.unpair(device_id)
             return self._send_json({"devices": devices})
+
+        if route == "/api/plugins":
+            body = self._read_json_body()
+            act, pid = body.get("action"), str(body.get("id") or "")
+            if act == "on":
+                return self._send_json(plugins.set_on(pid, body.get("on") in (True, 1, "1", "true")))
+            if act == "grant":
+                return self._send_json(plugins.set_grant(pid, str(body.get("permission") or ""),
+                                                         body.get("allow") in (True, 1, "1", "true")))
+            if act == "safe_start":
+                return self._send_json(plugins.set_safe_start(body.get("on") in (True, 1, "1", "true")))
+            if act == "error":
+                return self._send_json(plugins.report_error(pid, body.get("message")))
+            if act == "approve_real":
+                return self._send_json(plugins.approve_real(pid))
+            if act == "install":
+                return self._send_json(plugins.install(body.get("files")))
+            if act == "remove":
+                return self._send_json(plugins.remove(pid))
+            raise ValueError("Pick an action: on, grant, safe_start, error, approve_real, install or remove")
+
+        if route == "/api/models/inbox":
+            if self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            act = body.get("action")
+            if act == "link":
+                return self._send_json(model_inbox.fetch_link(body.get("url")))
+            # The watcher reads a folder on this computer, so only this computer may point it or take from it.
+            if not self._this_computer():
+                return self._send_json({"error": "Watch my Downloads works on the computer running Deja Vu1, at "
+                                                 "http://localhost:%d" % PORT}, status=403)
+            if act == "watch":
+                return self._send_json(model_inbox.set_watch(body.get("on") in (True, 1, "1", "true"),
+                                                             body.get("folder")))
+            if act == "take":
+                return self._send_json(model_inbox.take(body.get("name")))
+            if act == "dismiss":
+                return self._send_json(model_inbox.dismiss(body.get("name")))
+            raise ValueError("Pick an action: link, watch, take or dismiss")
+
+        if route == "/api/plugins/call":
+            body = self._read_json_body()
+            return self._send_json(plugins.call(str(body.get("id") or ""), str(body.get("method") or ""),
+                                                body.get("args"), body.get("printer")))
+
+        if route == "/api/plugins/action":
+            body = self._read_json_body()
+            return self._send_json(plugins.run_action(str(body.get("id") or ""), str(body.get("action") or ""),
+                                                      body.get("printer")))
 
         if route == "/api/cost/settings":
             if self._module_blocked("cost_calculator"):

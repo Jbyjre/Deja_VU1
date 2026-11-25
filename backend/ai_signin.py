@@ -160,7 +160,7 @@ def _post_form(url, fields, timeout=30):
         return error.code, body if isinstance(body, dict) else {}
     except (urllib.error.URLError, OSError, ValueError) as error:
         raise SignInError(f"Couldn't reach OpenAI's sign-in ({getattr(error, 'reason', error)}). Check this computer's "
-                          "internet connection.")
+                          "internet connection; a school or work network, or a firewall, may block auth.openai.com.")
 
 
 def _keys(refresh=False):
@@ -249,6 +249,29 @@ class _Callback(BaseHTTPRequestHandler):
         threading.Thread(target=_stop_listener, daemon=True).start()
 
 
+# What the sign-in page or the token address can answer when it says no (OAuth 2.0, RFC 6749 sections 4.1.2.1 and
+# 5.2; login_required and consent_required from OpenID Connect Core 3.1.2.6), in words. OpenAI's own refusal for a
+# plan that can't be shared comes later, from the Responses API.
+_AUTHORIZE_SAID = {
+    "invalid_scope": "ChatGPT didn't offer the permissions Deja Vu1 asks for, so nothing changed. Press Continue with "
+                     "ChatGPT to try again.",
+    "unauthorized_client": "ChatGPT didn't accept Deja Vu1's registration this time. Press Continue with ChatGPT to "
+                           "register again.",
+    "server_error": "ChatGPT's sign-in had a problem on its side. Wait a minute and press Continue with ChatGPT again.",
+    "temporarily_unavailable": "ChatGPT's sign-in is busy right now. Wait a minute and press Continue with ChatGPT "
+                               "again.",
+    "login_required": "ChatGPT needs you to sign in on its page first. Press Continue with ChatGPT and sign in there.",
+    "consent_required": "ChatGPT needs you to approve Deja Vu1 on its page. Press Continue with ChatGPT and approve "
+                        "it.",
+}
+_TOKEN_SAID = {
+    "invalid_grant": "The sign-in code ran out or was already used. Press Continue with ChatGPT again; the code "
+                     "works only once and only for a few minutes.",
+    "invalid_client": "OpenAI no longer knows Deja Vu1's registration on this computer. Press Continue with ChatGPT "
+                      "to register again.",
+}
+
+
 def _html(text):
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -270,7 +293,7 @@ def _listen():
             server = HTTPServer(("127.0.0.1", port), _Callback)
             break
         except OSError:
-            continue
+            continue      # 1455 is busy, often another app's own ChatGPT sign-in: any free port on this computer works
     else:
         raise SignInError("Deja Vu1 couldn't open a port on this computer for the sign-in to come back to.")
     threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.5}, daemon=True,
@@ -306,7 +329,8 @@ def start_chatgpt(listen=True):
                     started=time.time())
     _last.update(error="", done_at=0)
     _timer(lambda s=state: _expire(s))
-    return {"url": AUTHORIZE + "?" + urllib.parse.urlencode(query, quote_via=urllib.parse.quote), "port": port}
+    return {"url": AUTHORIZE + "?" + urllib.parse.urlencode(query, quote_via=urllib.parse.quote), "port": port,
+            "port_busy": bool(server) and port != PORT}
 
 
 def _timer(fn):
@@ -340,8 +364,10 @@ def _complete(params):
     try:
         if params.get("error"):
             reason = params.get("error_description") or params["error"]
-            raise SignInError("ChatGPT plan use wasn't allowed, so nothing changed. You can allow it later from Deja Vu1."
-                              if params["error"] == "access_denied" else f"ChatGPT said: {reason}")
+            if params["error"] == "access_denied":
+                raise SignInError("ChatGPT plan use wasn't allowed, so nothing changed. Press Continue with ChatGPT and "
+                                  "allow plan use when you want Deja Vu1 to use your plan.")
+            raise SignInError(_AUTHORIZE_SAID.get(params["error"]) or f"ChatGPT said: {reason}")
         client = params.get("client_id") or _pending.get("client")
         if not client or client == "dynamic_agent_client":
             raise SignInError("The registration didn't finish. Press Continue with ChatGPT again.")
@@ -351,8 +377,10 @@ def _complete(params):
                                                "code": params.get("code") or "", "code_verifier": _pending["verifier"],
                                                "redirect_uri": _pending["redirect"], "resource": RESOURCE})
         if status_code != 200 or not body.get("access_token"):
-            raise SignInError("OpenAI didn't accept the sign-in code" + (f" ({body.get('error')})" if body.get("error") else "")
-                              + ". Press Continue with ChatGPT again.")
+            said = _TOKEN_SAID.get(body.get("error"))
+            raise SignInError(said or "OpenAI didn't accept the sign-in code" +
+                              (f" ({body.get('error')})" if body.get("error") else "") +
+                              ". Press Continue with ChatGPT again.")
         claims = check_id_token(body.get("id_token"), client, _pending["nonce"])
         old = _load()
         if old.get("subject") and old.get("client_id") == client and old["subject"] != claims.get("sub"):
@@ -363,7 +391,8 @@ def _complete(params):
                   "expires_at": time.time() + int(body.get("expires_in") or 3600)}
         _keep_tokens(tokens, {"client_id": client, "subject": claims.get("sub"), "email": claims.get("email") or "",
                               "name": claims.get("name") or "", "signed_in_at": time.time()})
-        _last.update(error="" if PLAN_SCOPE in scopes else "Signed in, but ChatGPT plan use wasn't allowed.",
+        _last.update(error="" if PLAN_SCOPE in scopes else "Signed in, but ChatGPT plan use wasn't allowed. Press Try "
+                     "again and allow plan use, and tick plan use on the page that opens.",
                      done_at=time.time())
     except SignInError as error:
         _last.update(error=str(error), done_at=time.time())
@@ -379,7 +408,8 @@ def access_token():
         if not tokens.get("access_token"):
             raise SignInError("Sign in with ChatGPT first.")
         if PLAN_SCOPE not in (tokens.get("scopes") or []):
-            raise SignInError("ChatGPT plan use isn't allowed for Deja Vu1 yet. Press Continue with ChatGPT and allow it.")
+            raise SignInError("ChatGPT plan use isn't allowed for Deja Vu1 yet. Press Try again and allow plan use "
+                              "on the AI screen.")
         if (tokens.get("expires_at") or 0) - time.time() > REFRESH_EARLY_S:
             return tokens["access_token"]
         if not tokens.get("refresh_token"):

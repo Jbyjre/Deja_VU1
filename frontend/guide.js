@@ -324,7 +324,8 @@ window.Guide = (() => {
       { target: '#tab-layerplan', title: 'Slicing and layer heights', text: 'Slicing runs the Snapmaker Orca or OrcaSlicer you installed; Mixed layer heights plans a height per head; Import from Orca brings in your presets.' },
     ],
     models: [
-      { target: '#models-sites', title: 'Model sites', text: 'Each link opens a model site in a new tab. Deja Vu1 sends them nothing.' },
+      { target: '#models-sites', title: 'Find a model', text: 'Search the sites you star, or open one. Each opens in a new tab, signed in as you.' },
+      { target: '#models-inbox', title: 'Bring it in', text: 'With Watch my Downloads on, each model you download is offered here: open it on a Slicer plate or keep it in Files.' },
       { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
     ],
     studio: [

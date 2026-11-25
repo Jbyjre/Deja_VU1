@@ -33,6 +33,14 @@ internet for them. A model on this computer works offline, and so does the rest 
   browser ended on into the box under the button. The sign-in is refreshed before it runs out and
   revoked at OpenAI when you press Sign out. The ChatGPT desktop app itself can't be used by other
   apps, which is why this is the way in.
+  When the sign-in or your plan says no, Deja Vu1 says which case it is: plan use not ticked on
+  the approval page (press **Try again and allow plan use**), a plan, workspace or setting that
+  doesn't let apps use it (signing in again won't help; an OpenAI API key works instead), the
+  plan's allowance for apps used up (see ChatGPT, Settings, Usage), a sign-in code that ran out or
+  was already used, ChatGPT's sign-in busy, or a network that blocks auth.openai.com. When port 1455
+  is taken by another program, often another app's own ChatGPT sign-in, the sign-in comes back on
+  a free port and the screen says which. Whether a free ChatGPT plan can be used this way isn't
+  stated in OpenAI's pages and hasn't been tried here.
 - **Claude:** the Claude desktop app keeps its own sign-in that other programs can't use, so Claude
   Code signs in once by itself. Press **Sign in with Claude**: Deja Vu1 runs Claude Code's own sign-in
   (`claude auth login`), the page opens in your browser, and if the page shows a code you paste it into
@@ -54,6 +62,12 @@ re-reads it. You can also type a model's exact name.
 The chip at the top of the chat shows the AI in use and its model; press it to change either between
 messages. The clock button lists your saved conversations, newest first, so you can pick one up where
 you left off; they stay on this computer.
+
+### How much it says
+
+The AI screen's How much it says card sets the length of chat replies: Short
+(one or two lines unless you ask for more), Normal (about five short lines) or Detailed (the reasons
+and readings behind each answer). Shorter replies cost less on a key that charges per word.
 
 ### API keys
 
@@ -119,11 +133,29 @@ model on your own computer keeps all of that at home.
   and reports the time and filament the slicer worked out. To print the result it opens Confirm
   Print, which checks the file first; it cannot start a print itself.
 - **Print watch:** on the AI screen, switch on **Print watch** and your AI looks at the camera every
-  5 to 60 minutes while a real printer prints. If a picture looks wrong it tells you on screen. If
-  you also tick **Pause when it clearly sees a failed print**, it pauses the print through the same
-  checks as the Pause button (watch-only mode still blocks it). Each check sends one camera picture
-  to your AI; the card counts the checks and their cost. Demo printers have a drawn camera, so print
-  watch only runs on real printers.
+  2 to 60 minutes while a real printer prints, with an extra look at the first layers and one near
+  the end. Each look rates what it sees as nothing wrong, a cosmetic flaw, a fixable problem, a
+  failing print or a crash risk, and says why in two or three sentences with how sure it is. Under
+  **Customize**, **What it does about each kind of problem** sets one rule per kind: note it, send
+  an alert, pause and ask you, or let the AI decide. When the AI decides, it says why it chose
+  what it did. A pause goes through the same checks as the Pause button (watch-only mode still
+  blocks it), happens only while the printer prints and, with **Look twice before pausing**, only
+  once a second picture agrees. Print watch can pause a print but never cancels or starts one.
+  An alert carries the picture the AI studied (ntfy.sh, Discord and Telegram), unless you turn off
+  **Add the picture to alerts**. ntfy.sh keeps a picture for 3 hours, and anyone who knows your
+  topic name can open it. An alert held back for quiet hours goes later with its words only.
+- **Which AI looks:** with two or more AIs connected, Customize lets another connected AI do the
+  looking than the one you chat with, such as a cheaper one for a long print's many looks. If that
+  AI is removed, the watch goes back to the one in use.
+- **Recent looks:** each look is kept on your computer with the picture it studied (the newest
+  30). Mark a look **Correct** or **Wrong**, or **Ignore things like this**; your last ten marks go
+  with the next looks as examples, so it learns what is normal on your printer. They are sent as
+  examples, never as instructions.
+- **Try it on a recorded time-lapse:** pick a time-lapse video and your browser takes 6, 12 or 24
+  frames from it; your AI judges each one with your rules, as if the print were running. Nothing
+  is paused or sent, and the looks show under Recent looks as rehearsals. Each frame costs the
+  same as one look while printing. Demo printers have a drawn camera, so print watch only runs on
+  real printers; the card counts the looks and their cost.
 - **Print settings:** it suggests settings as a list with the reason. One press puts them in the
   profile editor, and nothing changes until you save the profile.
 - **Explain:** while an AI is connected, cards such as Needs you, Confirm Print, the console and a

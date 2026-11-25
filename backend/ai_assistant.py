@@ -64,7 +64,7 @@ import watch_only
 from ai_assistant_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     CHARS_PER_TOKEN, DEFAULT_MODE, HIGH_STAKES, JUMPS, LIMITS, MAX_ACTIONS, MAX_MODEL_BYTES, MAX_RESULT,
     MAX_ROUNDS, MAX_SAVED_CHATS, MAX_TEXT, MAX_THREADS, MODES, OLD_PLACES, PLACES, Refused, SLICE_WAIT_S,
-    STATE_CHARS, WATCH_CONFIRM_S, WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR,
+    STATE_CHARS, TALK, WATCH_CONFIRM_S, WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR,
     _DATA_DIR, _DETAIL, _FILE_TOOLS, _OFFLINE, _SAFE_GCODE, _SETTINGS_PATH, _automation_add, _automation_toggle,
     _automations, _brief_state, _build_model, _connections, _cool_down, _cut_holes, _demo_now, _edit_model,
     _explain_error, _extrude, _file_delete, _file_info, _files, _guide_text, _gcode, _job_words, _lib_name, _lock, _logbook_add, _logbook_read,
@@ -82,7 +82,7 @@ from ai_assistant_part3 import (  # noqa: F401  (split out 19 November 2026; nam
     TOOLS, _NEEDS_PRINTER, _WRITES_PRINTER, _advance, _carry_out, _check_allowed, _count_usage, _label,
     _needs_yes, _other_ais, _price_row, _print_watch, _run, _settings, _start, _system, _waits_for_a_yes, _watch_ask, _watch_one, budget, chat,
     decide, estimate, forget, retry, select, signin, status, test, watch_loop, watch_now, watch_once_for_rule,
-    watch_settings, watch_tick, watch_view,
+    watch_judge, watch_look_picture, watch_rehearse, watch_settings, watch_tick, watch_view,
 )
 
 

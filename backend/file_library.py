@@ -130,8 +130,8 @@ def read_text(name):
     return read_bytes(name).decode("utf-8", errors="replace")
 
 
-def save(name, data, origin="upload", note=None):
-    """Add or replace a file. Returns its library entry."""
+def save(name, data, origin="upload", note=None, source=None):
+    """Add or replace a file. Returns its library entry. source: where a model came from (site, page, designer...)."""
     name = clean_name(name)
     if not data:
         raise ValueError("The file is empty")
@@ -147,6 +147,10 @@ def save(name, data, origin="upload", note=None):
                       "modified_at": _now()})
         if note:
             entry["note"] = note
+        if source:
+            entry["source"] = dict(source)
+        elif origin not in ("edited", "restored"):
+            entry.pop("source", None)       # a new file under the same name came from somewhere else
         index[name] = entry
         _save_index(index)
     return describe(name)
@@ -252,6 +256,13 @@ def _summarize(name):
                         png = safe_zip.read(z, part, limit=8 * 1024 * 1024, what="3MF file")
                         thumb = png if png.startswith(b"\x89PNG\r\n\x1a\n") else None
                         break
+                try:
+                    import project_plates          # imported here: it imports this module
+                    plates = project_plates.describe_data(data)["count"]
+                except ValueError:
+                    plates = 0
+                if plates > 1:
+                    summary["plates"] = plates
             if thumb is None:
                 thumb = mesh_tools.png_thumbnail(model["sample"])
     except (ValueError, KeyError, OSError) as exc:

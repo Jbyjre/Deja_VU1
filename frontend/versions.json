@@ -6,6 +6,114 @@
   },
   "versions": [
     {
+      "version": "0.20.47",
+      "date": "2026-11-25",
+      "name": "Show the version history and update messages in your own language",
+      "published": true,
+      "summary": "Show the version history and update messages in your own language.",
+      "changes": [
+        "Show the version history and update messages in your own language"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.20.46",
+      "date": "2026-11-25",
+      "name": "See how well each head's loaded spool fits a colour before you print",
+      "published": true,
+      "summary": "See how well each head's loaded spool fits a colour before you print.",
+      "changes": [
+        "See how well each head's loaded spool fits a colour before you print"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.20.45",
+      "date": "2026-11-25",
+      "name": "Search and sort your files, and see when a model may be drawn in inches",
+      "published": true,
+      "summary": "Search and sort your files, and see when a model may be drawn in inches.",
+      "changes": [
+        "Search and sort your files, and see when a model may be drawn in inches"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.20.44",
+      "date": "2026-11-25",
+      "name": "Plugins: add your own house rules, buttons and panes, each allowed only what...",
+      "published": true,
+      "summary": "Plugins: add your own house rules, buttons and panes, each allowed only what you tick; find a model and bring downloads straight onto a plate.",
+      "changes": [
+        "Plugins: add your own house rules, buttons and panes, each allowed only what you tick; find a model and bring downloads straight onto a plate"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.20.43",
+      "date": "2026-11-25",
+      "name": "Print watch that follows your rules, shows its picture, and lets you choose i...",
+      "published": true,
+      "summary": "Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened.",
+      "changes": [
+        "Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.20.42",
+      "date": "2026-11-25",
+      "name": "Replay an ended print on the 3D twin",
+      "published": true,
+      "summary": "Replay an ended print on the 3D twin.",
+      "changes": [
+        "Replay an ended print on the 3D twin"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.41",
       "date": "2026-11-25",
       "name": "Deja Vu1 remembers the files you printed: their history where you open them,...",

@@ -514,3 +514,62 @@ p.pr-pic { display: grid; place-items: center; padding: 14px; box-sizing: border
 @media (prefers-reduced-transparency: reduce) {
   .recall, .recall-fact { background: var(--paper-solid, #fff); box-shadow: none; }
 }
+
+/* RECALL.2 (replay.js): an ended print replayed on the 3D twin. The twin and the time-lapse frame side by side (stacked on a
+ * phone), the readings at the chosen layer, the temperatures by layer with a mark at each event, the scrub bar and the
+ * events as buttons that jump to their layer. */
+#replay-dialog .dialog-panel { display: grid; gap: 10px; }
+.replay-stage { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 10px; align-items: stretch; }
+.replay-stage:has(.replay-frame[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.replay-twin { position: relative; min-height: 260px; height: min(46dvh, 420px); border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--hair); background: color-mix(in oklch, var(--text) 4%, transparent); }
+.replay-twin .twin3d { position: absolute; inset: 0; }
+.replay-twin .twin3d canvas { width: 100%; height: 100%; display: block; }
+.replay-views { position: absolute; z-index: 2; top: 10px; left: 10px; display: flex; gap: 6px; }
+.replay-views .btn[aria-pressed="true"] { background: var(--text); color: var(--paper-solid, #fff); border-color: var(--text); }
+.replay-twin.is-empty { display: grid; place-items: center; height: auto; min-height: 120px; }
+.replay-empty { margin: 0; padding: 16px; max-width: 46ch; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--text-dim); }
+.replay-frame { margin: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; min-height: 0; }
+.replay-frame img { width: 100%; height: 100%; min-height: 0; max-height: min(46dvh, 420px); object-fit: contain; border-radius: 16px; background: #0c1018; }
+.replay-frame figcaption { font: 600 11px/1 var(--font-mono); color: var(--text-faint); text-align: right; }
+.replay-read { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.replay-read:empty { display: none; }
+.replay-chart-wrap { display: grid; gap: 4px; }
+.replay-chart { width: 100%; height: 96px; border-radius: 12px; border: 1px solid var(--hair); background: color-mix(in oklch, var(--text) 3%, transparent); }
+.rp-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.rp-bed { --rp: oklch(66% .15 60); }
+.rp-t0 { --rp: oklch(60% .17 250); }
+.rp-t1 { --rp: oklch(62% .16 150); }
+.rp-t2 { --rp: oklch(60% .19 320); }
+.rp-t3 { --rp: oklch(58% .02 260); }
+.rp-line.rp-bed, .rp-line.rp-t0, .rp-line.rp-t1, .rp-line.rp-t2, .rp-line.rp-t3 { stroke: var(--rp); }
+.rp-cursor { stroke: var(--text); stroke-width: 1.5; }
+.rp-ev { stroke-width: 6; opacity: .35; }
+.rp-ev-watch, .rp-ev-pause { stroke: var(--warn); }
+.rp-ev-end { stroke: var(--bad, var(--warn)); opacity: .5; }
+.replay-legend { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-dim); }
+.rp-key::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; background: var(--rp); }
+.rp-range { margin-left: auto; font-family: var(--font-mono); color: var(--text-faint); }
+.replay-events { display: grid; gap: 8px; justify-items: start; }
+.replay-events:empty { display: none; }
+.replay-events ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; width: 100%; }
+.replay-ev { width: 100%; min-height: 36px; padding: 7px 10px; border-radius: 10px; text-align: left; font: inherit; font-size: 13px; line-height: 1.4;
+  color: var(--text); cursor: pointer; background: color-mix(in oklch, var(--warn) 7%, transparent); border: 1px solid color-mix(in oklch, var(--warn) 22%, var(--hair));
+  overflow-wrap: anywhere; }
+.replay-ev:hover { background: color-mix(in oklch, var(--warn) 12%, transparent); }
+.replay-ev.is-here { border-color: var(--warn); }
+.replay-ev:focus-visible { outline: 2px solid var(--accent-text, var(--accent)); outline-offset: 2px; }
+.replay-events li > span { font-size: 13px; color: var(--text-dim); }
+.replay-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-faint); text-wrap: pretty; }
+@media (max-width: 720px) {
+  .replay-stage { grid-template-columns: minmax(0, 1fr); }
+  .replay-twin { height: 42dvh; min-height: 220px; }
+  .replay-frame img { max-height: 30dvh; }
+}
+@media (prefers-contrast: more) {
+  .replay-twin, .replay-chart, .replay-ev { border-color: var(--text); }
+  .replay-ev { background: var(--paper-solid, #fff); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .replay-twin, .replay-chart, .replay-ev { background: var(--paper-solid, #fff); }
+}

@@ -112,6 +112,9 @@ def parse_metadata(text):
                 pass
     if "filament_type" in settings:
         meta["filament_types"] = _split_list(settings["filament_type"])
+    if settings.get("curr_bed_type"):
+        # The plate the file was sliced for (Smooth PEI Plate, Textured PEI Plate...): plugin checks read it.
+        meta["bed_type"] = str(settings["curr_bed_type"])[:60]
     for key in ("filament_colour", "filament_color", "extruder_colour"):
         if key in settings:
             # Only real hex colours: the value ends up in style attributes in

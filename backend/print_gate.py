@@ -45,6 +45,7 @@ import layer_planner
 import maintenance
 import mock_moonraker
 import modules
+import plugins
 import tool_setup
 
 
@@ -259,6 +260,15 @@ def summary(filename, printer_state=None):
     material = (analysis["meta"].get("filament_types") or ["PLA"])[0]
     cost = cost_calculator.compute_job_cost(material, analysis["filament_grams"],
                                             analysis["estimated_hours"])
+
+    # -- your plugins' own checks (house rules such as "no PETG on the smooth plate") ----------
+    p_refuse, p_warn = plugins.gate_checks({
+        "materials": [r.get("expected_material") for r in rows if r.get("expected_material")]
+        or list(analysis["meta"].get("filament_types") or []),
+        "bed_type": analysis["meta"].get("bed_type"), "hours": analysis["estimated_hours"],
+        "grams": analysis["filament_grams"], "cost": (cost or {}).get("total_cost"), "heads": len(used)})
+    blocking += p_refuse
+    warnings += p_warn
 
     verdict = "blocked" if blocking else ("confirm" if warnings else "clear")
     fixes = _fixes(filename, state, pre, fil_block, noz_block, bed_check)
