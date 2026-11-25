@@ -318,7 +318,9 @@ class TestFromAStandInPrinter(WireTest):
         self.fake.begin_print("a.gcode")
         self.assertTrue(self.stateful(lambda s: s["state"] == "printing"))
         self.fake.raise_exception(2, 523, 0, 0, "Filament runout detected in Toolhead 1")
-        self.assertTrue(self.stateful(lambda s: s["state"] == "paused" and s.get("problem")))
+        # The printer sets the paused state first and sends the notification that carries the time just after, so
+        # the time can be a tick behind the problem itself.
+        self.assertTrue(self.stateful(lambda s: s["state"] == "paused" and (s.get("problem") or {}).get("raised_at")))
         state = self.printer.snapshot()
         self.assertEqual(state["problem"]["code"], "0002-0523-0000-0000")
         self.assertEqual(state["problem"]["effect"], "paused")
