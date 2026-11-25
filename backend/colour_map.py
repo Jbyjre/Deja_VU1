@@ -499,6 +499,40 @@ def suggest(filaments, loaded=None, heads=HEADS):
     return plan
 
 
+# How close a loaded head's colour is to a filament's, in OKLab distance (about 0.02 is barely visible). Deja Vu1's
+# own bands, chosen so a different shade of the same colour is "near" and another colour is "far".
+CLOSE = 0.08
+FAR = 0.18
+
+
+def head_fit(filaments, loaded, heads=HEADS):
+    """
+    For each filament the model uses, how well each head's loaded spool fits it:
+    {n: [{"head", "level", "distance", "source", "other_material"}, ...]} with level "close", "near", "far" or
+    "unknown" (no colour known for that head). source says whether the head's colour was measured by the colour
+    checker ("sensor") or reported by the printer ("printer").
+    """
+    out = {}
+    if not loaded:
+        return out
+    for f in filaments:
+        if not f.get("used"):
+            continue
+        row = []
+        for h, head in enumerate(loaded[:heads]):
+            c = clean_hex(head.get("colour"))
+            if not c:
+                row.append({"head": h, "level": "unknown", "distance": None, "source": None, "other_material": False})
+                continue
+            d = distance(f.get("colour"), c)
+            level = "close" if d <= CLOSE else "near" if d <= FAR else "far"
+            other = bool(head.get("type")) and bool(f.get("type")) and _material(head) != _material(f)
+            row.append({"head": h, "level": level, "distance": round(d, 3), "source": head.get("source") or "printer",
+                        "other_material": other})
+        out[str(f["n"])] = row
+    return out
+
+
 def check_plan(filaments, plan, heads=HEADS):
     if not isinstance(plan, list) or len(plan) != len(filaments):
         raise ColourMapError(f"Give a head for each of the {len(filaments)} filaments (or leave unused ones empty)")

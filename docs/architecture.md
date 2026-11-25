@@ -356,7 +356,11 @@ code splits the triangle into children that follow (OrcaSlicer
 rewritten; splits are copied. The plan is a head per filament: unused ones are
 dropped, four or fewer keep their own, more are merged by average OKLab distance
 with a large penalty for mixing materials, or each goes to the nearest loaded
-head. Writing the plan cuts every per-filament list in `project_settings.config`
+head. `head_fit` then rates each loaded head against each used colour in
+OKLab bands (close up to 0.08, near up to 0.18, far beyond) and marks another
+material; `_loaded_heads` in `app_part1.py` takes a head's colour from the
+colour checker when it has a fresh, calibrated reading (never on demo data) and
+says which source it used. Writing the plan cuts every per-filament list in `project_settings.config`
 to the heads used (slot k is head k; an empty slot keeps filament 1's settings),
 rebuilds the purge matrix from the largest member values and renumbers
 `extruder`, `support_filament`, `wipe_tower_filament` and the `*_filament_id`

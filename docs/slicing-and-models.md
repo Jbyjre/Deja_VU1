@@ -279,6 +279,8 @@ own metadata says them. Reading the page Windows records beside a download (its 
 Windows yet; macOS does not record it in a form Deja Vu1 reads, so there only the
 3MF's own credits show.
 
+**Colours on the heads.** Open a project with more than one colour in Files and its colours panel lists each filament with a head. With a printer connected, Match the printer's heads sends each colour to the closest loaded spool, and under each colour a line says how well the chosen head fits: a close colour, a similar shade to check, or a different colour (with the head that is closer, or a note to load the colour first), and whether that head holds another material. When the colour checker has a fresh, calibrated reading of a head, that measured colour is used instead of the one the printer reports, and the line says so. The bands are Deja Vu1's own: a different shade of the same colour counts as similar, another colour as different.
+
 **Files, search and sort.** With two or more files, the library has a search box (a file's name, its materials, or
 the designer and site a model came from) and a sort: newest first, last used first, by name, or longest print first.
 The sort is remembered on that device. A model under 10 mm across carries a May be in inches tag, and its panel says

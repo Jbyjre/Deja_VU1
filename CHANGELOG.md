@@ -10,6 +10,8 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**25 November 2026, see how well each head fits a colour.** In Files, the colours panel of a multi-colour project now says under each colour how well the chosen head's loaded spool fits it: a close colour, a similar shade to check, or a different colour, with the head that is closer or a note to load the colour first, and whether the head holds another material. When the colour checker has a fresh, calibrated reading of a head, Match the printer's heads uses that measured colour instead of the one the printer reports, and the panel says which it used. Checked with tests that stand in for the printer and the colour checker, and in the browser at computer and phone sizes; the colour checker itself is not built yet, so no measured colour has come from a real one. The new words have Spanish written by AI that no Spanish speaker has read yet.
+
 **25 November 2026, search and sort your files.** Files has a search box (name, material, or the designer and site
 a model came from) and a sort that the device remembers: newest first, last used first, by name or longest print
 first. A model under 10 mm across is tagged May be in inches, with the Slicer's Scale × 25.4 named on its panel, and a

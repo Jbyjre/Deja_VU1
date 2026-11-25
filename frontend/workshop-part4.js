@@ -394,6 +394,23 @@ async function renderColours(entry) {
     let plan = (data.suggested || []).slice();
     files.colourPlan = fil.length > HEAD_COUNT ? plan : null;
     const swatch = (c, label) => `<span class="cm-swatch${c ? '' : ' is-empty'}" style="--sw:${esc(c || 'transparent')}" aria-hidden="true"></span><span class="sr-only">${esc(label || '')}</span>`;
+    // How well the chosen head's loaded spool fits this colour, in words (COLOUR.1). Each sentence is one string.
+    const fitNote = (f, h) => {
+      const row = data.fit && data.fit[String(f.n)];
+      const fit = row && h != null ? row[h] : null;
+      if (!fit) return '';
+      const n = h + 1, measured = fit.source === 'sensor';
+      let say = '';
+      if (fit.level === 'unknown') say = `What head ${n} holds isn't known.`;
+      else if (fit.level === 'close') say = measured ? `Head ${n} holds a close colour, measured by the colour checker.` : `Head ${n} holds a close colour, as the printer reports it.`;
+      else if (fit.level === 'near') say = measured ? `Head ${n} holds a similar shade, measured by the colour checker. Check it looks right.` : `Head ${n} holds a similar shade, as the printer reports it. Check it looks right.`;
+      else {
+        const better = row.filter(x => x.level === 'close' || x.level === 'near').map(x => x.head + 1);
+        say = better.length ? `Head ${n} holds a different colour. Head ${better[0]} is closer.` : `Head ${n} holds a different colour, and no loaded head is close. Load this colour before printing.`;
+      }
+      const other = fit.other_material ? `<span>Head ${n} holds another material.</span>` : '';
+      return `<span class="cm-fit is-${esc(fit.level)}"><span>${esc(say)}</span>${other}</span>`;
+    };
     const headsOf = () => {
       const heads = [];
       for (let h = 0; h < HEAD_COUNT; h++) {
@@ -419,7 +436,7 @@ async function renderColours(entry) {
               <span class="cm-hname">Head ${x.h + 1}</span>
               <span class="cm-hwhat">${x.lead ? `${esc(x.lead.name)}${x.lead.type ? ` · ${esc(x.lead.type)}` : ''}` : 'Not used'}</span>
               ${x.members.length > 1 ? `<span class="cm-hfrom">filaments ${x.members.map(f => f.n).join(' + ')}</span>` : ''}
-              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, 'Loaded now')} loaded</span>` : ''}
+              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, '')}${data.loaded[x.h].source === 'sensor' ? `<span>measured</span>` : `<span>loaded</span>`}</span>` : ''}
             </li>`).join('')}
           </ol>
           <div class="cm-rows" role="list">
@@ -432,6 +449,7 @@ async function renderColours(entry) {
                 <option value="">${f.used ? 'Choose a head' : 'Leave out'}</option>
                 ${Array.from({ length: HEAD_COUNT }, (_, h) => `<option value="${h}"${plan[i] === h ? ' selected' : ''}>Head ${h + 1}</option>`).join('')}
               </select>
+              ${f.used ? fitNote(f, plan[i]) : ''}
             </div>`).join('')}
           </div>
           ${mixed.length ? `<p class="cm-warn" role="alert">Head ${mixed.map(x => x.h + 1).join(' and ')} would get different materials, which print at different temperatures. Choose another head for one of them.</p>` : ''}
@@ -459,7 +477,10 @@ async function renderColours(entry) {
         plan = ((b.dataset.cm === 'match' ? data.matched : data.suggested) || []).slice();
         files.colourPlan = plan.slice();
         draw();
-        toast(b.dataset.cm === 'match' ? 'Each colour now goes to the closest loaded head' : 'Alike colours now share a head', 'ok');
+        const anyMeasured = (data.loaded || []).some(x => x && x.source === 'sensor');
+        toast(b.dataset.cm !== 'match' ? 'Alike colours now share a head'
+          : anyMeasured ? "Each colour now goes to the closest loaded head, by the colour checker's readings where it has them"
+            : 'Each colour now goes to the closest loaded head', 'ok');
         return;
       }
       if (typeof tourOn === 'function' && tourOn()) { toast('Saving a copy needs the local Deja Vu1 app. The public demo is a recording.', 'warn'); return; }
