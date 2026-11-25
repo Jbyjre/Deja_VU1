@@ -104,6 +104,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.40 (25 November 2026): One path from a model to a print and back, every print on record, a camera wi...
+
+- One path from a model to a print and back, every print on record, a camera window you control, and Deja Vu1 runs only while you use it
+
 ## 0.20.39 (23 November 2026): Deja Vu1 on a real U1: a halted print it still holds, a bed-clear tick, and S...
 
 - Deja Vu1 on a real U1: a halted print it still holds, a bed-clear tick, and Spanish with a language step
