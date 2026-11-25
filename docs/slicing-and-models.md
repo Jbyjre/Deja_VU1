@@ -279,6 +279,12 @@ own metadata says them. Reading the page Windows records beside a download (its 
 Windows yet; macOS does not record it in a form Deja Vu1 reads, so there only the
 3MF's own credits show.
 
+**Files, search and sort.** With two or more files, the library has a search box (a file's name, its materials, or
+the designer and site a model came from) and a sort: newest first, last used first, by name, or longest print first.
+The sort is remembered on that device. A model under 10 mm across carries a May be in inches tag, and its panel says
+to open it in the Slicer and press Scale × 25.4 on the warning there. A 3MF project with more than one plate says how
+many. Print time and filament from inside a sliced 3MF are not read yet.
+
 ## Models and project fidelity
 
 Sources are immutable; editing stores transforms separately. Save-as includes
