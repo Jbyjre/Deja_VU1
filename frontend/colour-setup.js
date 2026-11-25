@@ -383,6 +383,10 @@ const ColourSetup = (() => {
           <div id="cs-usb-live" class="cs-usb"></div>
           <div class="field-row"><button type="button" class="btn small primary" id="cs-usb-connect">Connect with USB</button><button type="button" class="btn small" id="cs-usb-disconnect" hidden>Disconnect</button></div>
         </details>
+        <details class="cs-way"><summary>Printable parts: the black holder and the Pico's cradle</summary>
+          <p class="field-hint">Print in black PLA or PETG: a light colour lets room light in. Print the short test piece first and check that the board fits and the chip sits over the slit before printing the whole block. The Pico stays outside the block, beside it, within the sensor's 20 cm cable, powered by its own USB wall charger. Never from the printer.</p>
+          <p class="cs-files"><a class="btn small" href="colour-checker/holder/test-coupon.stl" download>test-coupon.stl</a> <a class="btn small" href="colour-checker/holder/sensor-block.stl" download>sensor-block.stl</a> <a class="btn small" href="colour-checker/holder/sensor-lid.stl" download>sensor-lid.stl</a> <a class="btn small" href="colour-checker/holder/pico-cradle.stl" download>pico-cradle.stl</a></p>
+        </details>
         <details class="cs-way"><summary>Firmware: the program on the Pico</summary>
           <p class="field-hint">The Pico needs CircuitPython 10 and three library pieces from Adafruit's bundle (<code>adafruit_as7341.mpy</code> and the <code>adafruit_bus_device</code> and <code>adafruit_register</code> folders, into CIRCUITPY/lib). Then copy this file onto the CIRCUITPY drive as <code>code.py</code>:</p>
           <p><a class="btn small" href="colour-checker/code.py" download="code.py">Download code.py</a></p>
