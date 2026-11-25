@@ -603,6 +603,7 @@ async function saveWatch(host) {
     const min = host.querySelector('[name=ai-watch-min]:checked'), sense = host.querySelector('[name=ai-watch-sense]:checked');
     if (min) body.minutes = +min.value;
     if (sense) body.sensitivity = sense.value;
+    if (v('#ai-watch-ai')) body.ai = v('#ai-watch-ai').value;
     if (!body.looks.length) { toast('Pick at least one thing to look for', 'warn'); return; }
     if (aiState.st.demo) { Object.assign(aiState.st.watch, body); drawPage(); return; }
     const res = await postJSON('/api/assistant/watch', body);
@@ -700,7 +701,7 @@ function wirePage() {
     const host = document.getElementById('ai-page');
     if (!host) return;
     const post = async body => {
-      if (aiState.st.demo) { if (body.mode) aiState.st.mode = body.mode; return; }
+      if (aiState.st.demo) { if (body.mode) aiState.st.mode = body.mode; if (body.talk) { aiState.st.talk = body.talk; drawPage(); } return; }
       const res = await postJSON('/api/assistant/select', body);
       if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
     };
@@ -719,6 +720,7 @@ function wirePage() {
       if (t.id === 'ai-rehearse-n') return;
       if (t.closest('#ai-watch-card')) { saveWatch(host); return; }
       if (t.name === 'ai-mode-page') post({ mode: t.value });
+      if (t.name === 'ai-talk-page') post({ talk: t.value });
     });
     host.addEventListener('click', async e => {
       const t = e.target;

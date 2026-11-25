@@ -32,7 +32,7 @@ import threading
 import time
 import update_hold
 import watch_only
-from ai_assistant_part1 import CHARS_PER_TOKEN, DEFAULT_MODE, HIGH_STAKES, JUMPS, LIMITS, MAX_ACTIONS, MAX_ROUNDS, MAX_TEXT, MODES, Refused, STATE_CHARS, WATCH_CONFIRM_S, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _FILE_TOOLS, _OFFLINE, _SETTINGS_PATH, _automation_add, _automation_toggle, _automations, _brief_state, _build_model, _connections, _cool_down, _cut_holes, _edit_model, _explain_error, _extrude, _file_delete, _file_info, _files, _gcode, _lock, _logbook_add, _logbook_read, _look, _make_shape, _model_info, _model_name, _money, _move, _move_by, _now, _nozzle, _open_page, _print_settings, _printers, _set_look, _slice, _slice_status, _slicer_profiles, _snapshot, _start_print, _suggest_settings, _threads, _timelapse_keep, _timelapses, _tokens, _tool, _tour, _watch, _watch_due, _watch_log, _watch_settings, _watch_system, _watch_verdict  # noqa: F401
+from ai_assistant_part1 import CHARS_PER_TOKEN, DEFAULT_MODE, HIGH_STAKES, JUMPS, LIMITS, MAX_ACTIONS, MAX_ROUNDS, MAX_TEXT, MODES, Refused, STATE_CHARS, TALK, WATCH_CONFIRM_S, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _FILE_TOOLS, _OFFLINE, _SETTINGS_PATH, _automation_add, _automation_toggle, _automations, _brief_state, _build_model, _connections, _cool_down, _cut_holes, _edit_model, _explain_error, _extrude, _file_delete, _file_info, _files, _gcode, _lock, _logbook_add, _logbook_read, _look, _make_shape, _model_info, _model_name, _money, _move, _move_by, _now, _nozzle, _open_page, _print_settings, _printers, _set_look, _slice, _slice_status, _slicer_profiles, _snapshot, _start_print, _suggest_settings, _threads, _timelapse_keep, _timelapses, _tokens, _tool, _tour, _watch, _watch_due, _watch_log, _watch_settings, _watch_system, _watch_verdict  # noqa: F401
 from ai_assistant_part2 import _GATES, _add, _card, _ctx, _neg, _picture, _results_text, _save_chat, _thread, _touch, parse, view  # noqa: F401
 
 
@@ -47,6 +47,8 @@ def _settings():
         data["cap_usd"] = None
     if data.get("mode") not in MODES:
         data["mode"] = DEFAULT_MODE
+    if data.get("talk") not in TALK:
+        data["talk"] = "normal"
     tested = data.get("tested")
     if isinstance(tested, str):                       # an earlier version kept one connection
         tested = {tested: 0}
@@ -73,6 +75,7 @@ def status():
         "connections": connections,
         "mode": s["mode"],
         "modes": MODES,
+        "talk": s["talk"],
         "default_mode": DEFAULT_MODE,
         "never_ask": [{"tool": t, "label": TOOLS[t]["what"].rstrip(".")} for t in s["never_ask"]],
         "ready": bool(active),
@@ -85,8 +88,8 @@ def status():
     }
 
 
-def select(provider=None, model=None, mode=None, never_ask=None):
-    """Choose the AI in use, a connection's model, how much it may do, or which steps never ask."""
+def select(provider=None, model=None, mode=None, never_ask=None, talk=None):
+    """Choose the AI in use, a connection's model, how much it may do, how much it says, or which steps never ask."""
     with _lock:
         s = _settings()
         target = s["provider"]
@@ -102,6 +105,10 @@ def select(provider=None, model=None, mode=None, never_ask=None):
             if mode not in MODES:
                 raise ValueError("Unknown mode")
             s["mode"] = mode
+        if talk is not None:
+            if talk not in TALK:
+                raise ValueError("Choose short, normal or detailed")
+            s["talk"] = talk
         if never_ask is not None:
             s["never_ask"] = [t for t in never_ask if t in TOOLS and TOOLS[t]["level"] in ("safe", "ask")]
         storage.save_json(_SETTINGS_PATH, s)
@@ -292,6 +299,11 @@ def watch_settings(on=None, minutes=None, pause=None, **more):
             w["sensitivity"] = more["sensitivity"]
         if more.get("notes") is not None:
             w["notes"] = re.sub(r"\s+", " ", str(more["notes"])).strip()[:300]
+        if more.get("ai") is not None:
+            pick = str(more["ai"] or "")
+            if pick and pick not in s["tested"]:
+                raise ValueError("Choose an AI that is connected, or the one in use for chat")
+            w["ai"] = pick
         s["watch"] = _watch_settings(s)
         storage.save_json(_SETTINGS_PATH, s)
     return status()
@@ -354,7 +366,14 @@ def watch_rehearse(data_url, label="", printer_name=""):
     return _watch_log(entry)
 
 
+def _watch_ai(st, w):
+    """The AI that looks: the owner's own pick for print watch (AI.3) while it is still set up, else the one in use."""
+    pick = next((c for c in st["connections"] if c["id"] == w.get("ai")), None)
+    return {**st, "provider": pick["id"], "model": pick["model"]} if pick else st
+
+
 def _watch_ask(st, w, text, pictures, more=None):
+    st = _watch_ai(st, w)
     answer = ai_providers.ask(st["provider"], st["model"], _watch_system(w, len(pictures) > 1),
                               [{"role": "user", "text": text, "images": pictures}])
     used = getattr(answer, "usage", None) or {}
@@ -857,8 +876,8 @@ def _system(ctx, mode):
         "- Results show as cards (readings, slices, models), so give only the numbers that answer the question.",
         "- Ask for the steps a task needs at once, in order (home before a move; heat before pushing filament). "
         "A refused step comes back with its reason: explain it, and don't repeat it with the same values.",
-        "- Answer briefly and plainly: what you did and what came of it, in about five short lines unless asked for more. The owner "
-        "may be new to 3D printing, so explain a term the first time you use it.",
+        "- Answer plainly: what you did and what came of it, " + TALK[_settings()["talk"]] + ". The owner may be new "
+        "to 3D printing, so explain a term the first time you use it.",
 
         "- For a print that looks wrong, gather evidence first (look, status, console, logbook), then name the "
         "most likely cause and one thing to try.",

@@ -248,6 +248,26 @@ class TestRehearsal(WatchCase):
         with self.assertRaises(ValueError):
             ai_assistant.watch_rehearse("not a picture")
 
+    def test_the_owner_picks_which_ai_looks_and_a_removed_one_falls_back(self):
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            ai_assistant.test("codex")
+        ai_assistant.select(provider="claude-code")
+        with self.assertRaises(ValueError):
+            ai_assistant.watch_settings(ai="openai")          # not connected, so it can't do the looking
+        ai_assistant.watch_settings(ai="codex")
+        self.assertEqual(ai_assistant.watch_view()["ai"], "codex")
+        asked = []
+
+        def ask(pid, model, system, messages):
+            asked.append(pid)
+            return answer("none", verdict="ok")
+        with patch.object(ai_providers, "ask", ask):
+            ai_assistant.watch_rehearse(FRAME)
+            ai_assistant.forget("codex")
+            ai_assistant.watch_rehearse(FRAME)
+        self.assertEqual(asked, ["codex", "claude-code"])     # chat stayed on Claude; the watch used its own pick
+        self.assertEqual(ai_assistant.status()["provider"], "claude-code")
+
     def test_it_needs_a_connected_ai(self):
         ai_assistant.reset()
         with self.assertRaises(ValueError):

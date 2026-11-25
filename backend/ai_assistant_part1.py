@@ -95,6 +95,11 @@ MODES = {
 
 DEFAULT_MODE = "free"
 
+# How much it says in chat (AI.3), as the words that go into its instructions.
+TALK = {"short": "in one or two short lines unless asked for more",
+        "normal": "in about five short lines unless asked for more",
+        "detailed": "with the reasons and the readings behind them, in short paragraphs"}
+
 
 # The few steps that throw away work that can't be got back. Every mode but "open" asks first.
 HIGH_STAKES = {"cancel_print", "skip_object"}
@@ -825,7 +830,8 @@ def _watch_settings(s):
             "compare": w.get("compare", True) is not False, "confirm": w.get("confirm", True) is not False,
             "picture": w.get("picture", True) is not False, "looks": looks, "policy": policy, "lessons": lessons,
             "sensitivity": w.get("sensitivity") if w.get("sensitivity") in WATCH_SENSITIVITY else "normal",
-            "notes": str(w.get("notes") or "")[:300], **ai_watch_policy.flags(policy)}
+            "notes": str(w.get("notes") or "")[:300], "ai": str(w.get("ai") or "")[:60],
+            **ai_watch_policy.flags(policy)}
 
 
 def _watch_system(w, compare):

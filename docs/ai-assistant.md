@@ -63,6 +63,12 @@ The chip at the top of the chat shows the AI in use and its model; press it to c
 messages. The clock button lists your saved conversations, newest first, so you can pick one up where
 you left off; they stay on this computer.
 
+### How much it says
+
+The AI screen's How much it says card sets the length of chat replies: Short
+(one or two lines unless you ask for more), Normal (about five short lines) or Detailed (the reasons
+and readings behind each answer). Shorter replies cost less on a key that charges per word.
+
 ### API keys
 
 A key works, and it is the least private way: it is a password that spends your money. Use a plan or
@@ -138,6 +144,9 @@ model on your own computer keeps all of that at home.
   An alert carries the picture the AI studied (ntfy.sh, Discord and Telegram), unless you turn off
   **Add the picture to alerts**. ntfy.sh keeps a picture for 3 hours, and anyone who knows your
   topic name can open it. An alert held back for quiet hours goes later with its words only.
+- **Which AI looks:** with two or more AIs connected, Customize lets another connected AI do the
+  looking than the one you chat with, such as a cheaper one for a long print's many looks. If that
+  AI is removed, the watch goes back to the one in use.
 - **Recent looks:** each look is kept on your computer with the picture it studied (the newest
   30). Mark a look **Correct** or **Wrong**, or **Ignore things like this**; your last ten marks go
   with the next looks as examples, so it learns what is normal on your printer. They are sent as

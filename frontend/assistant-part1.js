@@ -446,6 +446,30 @@ function watchCamHost() {
     return watchCam;
   }
 
+const TALK_NAME = { short: 'Short', normal: 'Normal', detailed: 'Detailed' };
+const TALK_HINT = {
+  short: 'One or two lines a reply, unless you ask for more. Fewer words also cost less on a paid key.',
+  normal: 'About five short lines a reply, unless you ask for more.',
+  detailed: 'The reasons and the readings behind each answer, in short paragraphs. Longer replies cost more on a paid key.'
+};
+
+/* How much it says in chat (AI.3). */
+function talkCard() {
+    const t = aiState.st.talk || 'normal';
+    return `<details class="card liquid-glass ai-mini" id="ai-talk"><summary><h2>How much it says</h2><span>${esc(TALK_NAME[t])}</span></summary>
+          <div class="ai-seg" role="radiogroup" aria-label="How much it says">${['short', 'normal', 'detailed'].map(k => `<label><input type="radio" name="ai-talk-page" value="${k}"${k === t ? ' checked' : ''}><span>${esc(TALK_NAME[k])}</span></label>`).join('')}</div>
+          <p class="ai-hint">${esc(TALK_HINT[t])}</p></details>`;
+}
+
+/* Which connected AI does the looking (AI.3): a cheaper or quicker one can watch while another answers chat. */
+function watchAI(w) {
+    const joined = aiState.st.connections || [];
+    if (joined.length < 2) return '';
+    const pick = joined.some(c => c.id === w.ai) ? w.ai : '';
+    return `<div class="ai-pol"><label class="ai-pol-row"><span><b>Which AI looks</b><small>Each look costs what that AI charges for one picture</small></span>
+          <select id="ai-watch-ai"><option value=""${pick ? '' : ' selected'}>Same as chat</option>${joined.map(c => `<option value="${esc(c.id)}"${c.id === pick ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label></div>`;
+}
+
 function drawPage() {
     const host = document.getElementById('ai-page');
     if (!host || host.closest('[hidden]')) return;
@@ -499,6 +523,7 @@ function connectedPage() {
         <details class="card liquid-glass ai-mini" id="ai-private"><summary><h2>Privacy</h2><span>What leaves this computer</span></summary>
           <p class="ai-hint">The AI you choose receives what you type, the printer’s readings, the results of its steps and any photo you attach. A camera picture goes only when it looks through the camera. Conversations are saved on this computer only. A model on this computer keeps everything at home.</p>
           <p class="ai-hint">${(aiState.st.tools || []).length || 'A fixed set of'} named steps are its only way to reach the printer, and every one passes the same checks as the buttons.</p></details>
+        ${talkCard()}
       </section>`;
   }
 
@@ -592,6 +617,7 @@ function watchCard() {
             ${toggle('ai-watch-last', w.last_layers, 'Check the last layers', 'One look near the end, where a tall print can topple')}
             ${toggle('ai-watch-confirm', w.confirm, 'Look twice before pausing', 'A second picture must agree, so one odd frame never stops a print')}</div>
         </div>
+        ${watchAI(w)}
         <h3>What it does about each kind of problem</h3>
         <div class="ai-pol">${['cosmetic', 'fixable', 'failing', 'crash'].map(k => `<label class="ai-pol-row"><span><b>${esc(SEV_NAME[k])}</b><small>${esc(SEV_HINT[k])}</small></span>
           <select name="ai-watch-pol" data-sev="${k}">${['note', 'notify', 'pause', 'decide'].map(a => `<option value="${a}"${pol[k] === a ? ' selected' : ''}>${esc(ACT_NAME[a])}</option>`).join('')}</select></label>`).join('')}</div>

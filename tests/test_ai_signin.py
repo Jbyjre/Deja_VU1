@@ -298,16 +298,15 @@ class SignInWithChatGPT(unittest.TestCase):
     def test_a_busy_port_is_said_and_another_one_used(self):
         import socket
         blocker = socket.socket()
-        try:
-            blocker.bind(("127.0.0.1", ai_signin.PORT))
-            blocker.listen(1)
-        except OSError:
-            pass                                     # something on this computer already holds it: the same case
+        blocker.bind(("127.0.0.1", 0))               # a port this test holds stands in for 1455, so another program
+        blocker.listen(1)                            # letting go of the real one mid-test can't change the answer
         self.addCleanup(blocker.close)
-        started = ai_signin.start_chatgpt()
+        held = blocker.getsockname()[1]
+        with patch.object(ai_signin, "PORT", held):
+            started = ai_signin.start_chatgpt()
         self.addCleanup(ai_signin._stop_listener)
         self.assertTrue(started["port_busy"])
-        self.assertNotEqual(started["port"], ai_signin.PORT)
+        self.assertNotEqual(started["port"], held)
         redirect = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(started["url"]).query))["redirect_uri"]
         self.assertEqual(redirect, f"http://127.0.0.1:{started['port']}/auth/callback")
 

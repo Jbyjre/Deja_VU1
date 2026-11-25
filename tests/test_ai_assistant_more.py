@@ -193,6 +193,20 @@ class TestAbilities(Base):
         self.assertIn("Care is switched off", details[1])
         self.assertIn("Care is switched off", details[2])
 
+    def test_how_much_it_says_goes_into_its_instructions(self):
+        self.assertEqual(ai_assistant.status()["talk"], "normal")
+        self.say("hi", "Hello.")
+        self.assertIn("in about five short lines", self.script.systems[-1])
+        ai_assistant.select(talk="short")
+        self.say("hi", "Hello.")
+        self.assertIn("in one or two short lines", self.script.systems[-1])
+        ai_assistant.select(talk="detailed")
+        self.say("hi", "Hello.")
+        self.assertIn("with the reasons and the readings", self.script.systems[-1])
+        self.assertEqual(ai_assistant.status()["talk"], "detailed")
+        with self.assertRaises(ValueError):
+            ai_assistant.select(talk="loud")
+
     def test_the_instructions_tell_it_to_act_and_treat_file_text_as_data(self):
         ai_assistant.select(mode="free")
         self.say("hi", "Hello.")

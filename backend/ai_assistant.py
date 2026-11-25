@@ -64,7 +64,7 @@ import watch_only
 from ai_assistant_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     CHARS_PER_TOKEN, DEFAULT_MODE, HIGH_STAKES, JUMPS, LIMITS, MAX_ACTIONS, MAX_MODEL_BYTES, MAX_RESULT,
     MAX_ROUNDS, MAX_SAVED_CHATS, MAX_TEXT, MAX_THREADS, MODES, OLD_PLACES, PLACES, Refused, SLICE_WAIT_S,
-    STATE_CHARS, WATCH_CONFIRM_S, WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR,
+    STATE_CHARS, TALK, WATCH_CONFIRM_S, WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR,
     _DATA_DIR, _DETAIL, _FILE_TOOLS, _OFFLINE, _SAFE_GCODE, _SETTINGS_PATH, _automation_add, _automation_toggle,
     _automations, _brief_state, _build_model, _connections, _cool_down, _cut_holes, _demo_now, _edit_model,
     _explain_error, _extrude, _file_delete, _file_info, _files, _guide_text, _gcode, _job_words, _lib_name, _lock, _logbook_add, _logbook_read,

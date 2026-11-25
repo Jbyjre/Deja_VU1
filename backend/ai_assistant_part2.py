@@ -28,6 +28,7 @@ def reset():
             _drop_chat_file(row["id"])
         for book in ("log", "last", "first", "final", "pictures"):
             _watch[book].clear()
+        _watch["usage"].update(checks=0, cost_usd=0.0, **{"in": 0, "out": 0})
         _watch["loaded"] = True
         ai_watch_policy.save_log([])
     ai_providers.reset()
