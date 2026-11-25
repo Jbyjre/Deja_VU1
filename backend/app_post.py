@@ -17,6 +17,7 @@ import logbook
 import print_record
 import camera
 import color_check
+import colour_bench
 import companion_sensor
 import colour_map
 import storage
@@ -85,6 +86,17 @@ class PostRoutes:
             body = self._read_json_body()
             action = companion_sensor.configure if route.endswith("/sensors") else companion_sensor.ingest
             return self._send_json(action(body))
+
+        if route in ("/api/colorcheck/bench", "/api/colorcheck/bench/delete"):
+            if self._module_blocked("color_check"):
+                return None
+            action = colour_bench.record if route == "/api/colorcheck/bench" else colour_bench.delete
+            return self._send_json(action(self._read_json_body()))
+
+        if route == "/api/colorcheck/command":
+            if self._module_blocked("color_check"):
+                return None
+            return self._send_json(companion_sensor.queue_command(self._read_json_body()))
 
         if route == "/api/colorcheck/calibration":
             if self._module_blocked("color_check"):

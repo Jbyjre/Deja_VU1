@@ -9,6 +9,12 @@ paths:
   `tests/test_printer_problem_feed.py` (live feed, logbook, rules, Tester mode), `tests/test_error_guides.py` (the fetcher with a canned wiki, the routes, the tester
   report) and `tests/test_error_assistant.py`. No test asks the internet.
 - The Slicer: `tests/test_engine_installer.py` (a stand-in release server and engine from `tools/stand-in-engine.py --make-engine`: download, checksum, unpack, check, update, cancel, bad archive), `tests/test_slicer_working.py`, `tests/test_slicer_model.py` (runs `tests/slicer_model_check.js`, the plate model with cutting and splitting, and `tests/slicer_cut_check.js`, the cutting geometry, in Node) `tests/test_slicer_gcode.py` (the Preview's G-code reader in Node: `tests/slicer_gcode_check.js`) and `tests/test_slicer_browser.py` (runs `node tools/slicer-check.js`: 104 browser checks with a stand-in engine, 22 of them on the camera and keys, 6 on the filament picker and 4 on saved settings; skipped without Node, Playwright and Chromium). No test runs the real engine; `python3 tools/engine-selftest.py` does (9 of 9 on 22 November 2026, Linux), and so can a person on their own computer.
+- The colour checker: `tests/test_colour_firmware.py` and `tests/test_colour_wifi.py` run the real `hardware/colour-checker/code.py` against
+  `tools/colour_pico_sim.py` (stand-in `board`, `busio`, `wifi`, `socketpool`, a model of the AS7341; the Wi-Fi tests use real sockets to the real
+  server and one shared simulated clock), `tests/test_sensor_settings.py` and `tests/test_sensor_wifi.py` (the server side), `tests/test_colour_holder.py`
+  (the STL parts: closed meshes, the light path, no wall under 0.8 mm), `tests/test_colour_bench.py` (recording, the sums, the rules against overclaiming),
+  `tests/test_colour_checker_files.py` and `tests/test_colour_setup_browser.py` (runs `node tools/colour-setup-check.js`: the setup window, a fake USB port,
+  Confirm Print and the bench; skipped without Node, Playwright and Chromium). Nothing there ran on a real Pico W.
 - Standard-library `unittest`. API tests start the real server on a spare port. Tests use
   simulated printers, temporary folders and `tests/fake_moonraker.py` (a Moonraker stand-in built
   from Moonraker's source); none contacts a physical printer.

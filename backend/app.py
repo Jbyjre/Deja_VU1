@@ -87,6 +87,11 @@ API endpoints
   POST /api/colorcheck/sensors       version 1 physical sensor assignments, per printer
   POST /api/colorcheck/readings      one version 1 companion observation
   POST /api/colorcheck/calibration   {"toolhead", "step": "white"|"dark"|"clear"} record or forget a reference
+  POST /api/colorcheck/command       {"toolhead", "cmd": "set"|"autogain"|"new_sensor", ...} queued for the sensor's next reply
+  GET  /api/colorcheck/connection    this computer's network addresses and the printer id, for setting up a Wi-Fi sensor
+  GET  /api/colorcheck/bench         bench readings of known spools (?full=1 adds the raw counts, for the report)
+  POST /api/colorcheck/bench         {"toolhead", "spool": {brand, material, name, hex}, "blind", "insertion", "mode"} keep the latest reading
+  POST /api/colorcheck/bench/delete  {"id"} or {"spool": key} remove bench readings
   GET  /api/colorcheck/overrides     prints started against the colour sensor's reading, newest first
   GET  /api/printer                  raw mock printer state
   GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
@@ -791,7 +796,9 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
 
     def _note_page(self):
         """Any request but the launcher's own checks means a page is open (idle_stop.py). Not a security check."""
-        if not self.headers.get("User-Agent", "").startswith("Python-urllib"):
+        # The launcher's own checks and a colour checker's readings (firmware, "DejaVu1-sensor/...") are not a page:
+        # a sensor that stays powered must not keep the app running after the last page closed.
+        if not self.headers.get("User-Agent", "").startswith(("Python-urllib", "DejaVu1-sensor/")):
             idle_stop.page_seen()
 
     def do_GET(self):

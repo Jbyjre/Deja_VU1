@@ -249,7 +249,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background
   the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
   Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
   Backup restore and an update install.
-- **Automated:** 2203 tests passed on Python 3.13 (25 November 2026). GitHub Actions
+- **Automated:** 2328 tests passed on Python 3.13 (25 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
   Snapmaker Orca v2.4.1 on Linux and Windows.
@@ -271,11 +271,13 @@ next step is a colour sensor for spools the printer can't identify: a sensor in 
 reads the filament, and a Raspberry Pi Pico W sends the reading to Deja Vu1. Two candidate sensors,
 the AS7341 and the TCS34725, get a bench test on real spools before anything goes near the printer.
 A sensor mismatch starts as a warning you can accept. Spool scales come after it.
-The [companion API](docs/colour-sensor-api.md) now receives identified sensor readings and expires
-old samples. Deja Vu1 also turns a sensor's raw counts into a colour from a white reference you record in
-the housing, and Confirm Print shows the sensor beside the file's colour and the printer's report as advice
-that never blocks a start. Both are tested with synthetic readings and a stand-in printer. The Pico firmware
-and a bench test of a physical sensor are still to do.
+The [companion API](docs/colour-sensor-api.md) receives identified sensor readings and expires old samples. Deja Vu1 turns a
+sensor's raw counts into a colour from a white reference you record in the housing, ties that reference to the sensor's settings, and
+Confirm Print shows the sensor beside the file's colour and the printer's report as advice that never blocks a start. A Pico W
+firmware sends the readings over your home Wi-Fi or a USB cable, a setup window walks through the Wi-Fi details, the sensor's head, the
+brightness and the references, a generator makes the black holder, and a bench report measures known spools without quoting a rate from
+fewer than 10. All of it is tested with stand-ins. The firmware has not run on a real Pico W, the holder has not been printed and no
+spool has been measured. [The guide](docs/colour-checker.md)
 [The design](docs/hardware-modules.md)
 
 ## How it's built
@@ -291,7 +293,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 2203 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2328 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

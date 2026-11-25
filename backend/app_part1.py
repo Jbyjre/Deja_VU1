@@ -14,6 +14,7 @@ import automations
 import autostart
 import camera
 import color_check
+import colour_bench
 import colour_map
 import companion_sensor
 import comparison
@@ -202,6 +203,8 @@ _APP_ROUTES = {
     "/api/errors/guide": ("error_help", lambda q: error_guides.get(_q(q, "slug", ""), _q(q, "refresh", "0") in ("1", "true"))),
     "/api/colorcheck/sensors": ("color_check", lambda q: companion_sensor.status()),
     "/api/colorcheck/overrides": ("color_check", lambda q: color_check.overrides()),
+    "/api/colorcheck/connection": ("color_check", lambda q: color_check.connection_info(PORT)),
+    "/api/colorcheck/bench": ("color_check", lambda q: colour_bench.listing(_q(q, "full", "0") in ("1", "true"))),
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),

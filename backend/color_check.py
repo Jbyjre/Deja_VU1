@@ -45,6 +45,8 @@ sensor driver or physical accuracy claim is included here. See docs/hardware-mod
 
 import os
 import random
+import re
+import socket
 import threading
 import time
 
@@ -174,11 +176,29 @@ def calibrate(toolhead_id, step="white"):
     if not reading or sensor["age_s"] is None or sensor["age_s"] > REFERENCE_MAX_AGE_S:
         raise ValueError(f"Wait for a new reading from {toolhead_id}'s sensor (under {REFERENCE_MAX_AGE_S} seconds "
                          "old), then try again")
-    if reading["quality_flags"]:
-        raise ValueError("The sensor flagged this sample (" + ", ".join(reading["quality_flags"]) +
+    # An empty housing is dim on purpose, so "low_light" does not refuse a dark reference.
+    blocking = [flag for flag in reading["quality_flags"] if not (step == "dark" and flag == "low_light")]
+    if blocking:
+        raise ValueError("The sensor flagged this sample (" + ", ".join(blocking) +
                          "). Fix the light or the target's position, then try again")
     return sensor_calibration.record_reference(pid, toolhead_id, identity, step, reading["raw"],
-                                               reading["captured_at"])
+                                               reading["captured_at"], reading.get("settings"))
+
+
+def connection_info(port):
+    """
+    What a colour checker on Wi-Fi needs to know to reach this app: the computer's home-network addresses and port,
+    the selected printer's id and whether the device lock is on. Local to this computer; never part of the demo.
+    """
+    import discovery
+    import pairing
+
+    name = socket.gethostname()
+    pid = mock_moonraker.selected_printer_id()
+    return {"printer_id": pid, "physical": mock_moonraker.is_real(pid), "port": port,
+            "addresses": [f"{address}:{port}" for address in discovery.home_addresses()],
+            "name": f"{name}.local:{port}" if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,62}", name or "") else None,
+            "device_lock": pairing.lock_enabled()}
 
 
 def read_sensor(toolhead_id):
@@ -327,7 +347,8 @@ def check_current_job():
     """
     job = get_current_job_requirements()
     if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
-        sensors = companion_sensor.status()["sensors"]
+        listing = companion_sensor.status()
+        sensors = listing["sensors"]
         return {
             "simulated": False,
             "hardware_connected": any(s["age_s"] is not None and s["age_s"] < companion_sensor.MAX_AGE_S
@@ -339,6 +360,7 @@ def check_current_job():
             "overall": "sensor_readings" if sensors else "no_sensor",
             "checks": [],
             "sensors": sensors,
+            "unassigned": listing["unassigned"],
         }
     results = []
 

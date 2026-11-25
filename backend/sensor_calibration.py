@@ -41,6 +41,9 @@ _PATH = os.path.join(_DATA_DIR, "colour_calibrations.json")
 _lock = threading.RLock()
 
 IDENTITY = ("device_id", "channel_id", "sensor_id", "sensor_model")
+# Settings that change how bright the counts are belong to a reference: a white reference taken at gain 16 says
+# nothing about a sample read at gain 64. These change only how steady a reading is, so they do not count.
+NEUTRAL_SETTINGS = ("average",)
 STEPS = ("white", "dark", "clear")
 HIGH_CONFIDENCE = 0.9
 LOW_CONFIDENCE = 0.5          # below companion_sensor.MIN_CONFIDENCE: shown as "low confidence"
@@ -162,6 +165,33 @@ def colour_from(model, white, dark, raw):
     return _hex(linear), flags
 
 
+def _signature(settings):
+    if not settings:
+        return None
+    return {key: value for key, value in settings.items() if key not in NEUTRAL_SETTINGS}
+
+
+def same_settings(first, second):
+    """Were two readings taken with the sensor set the same way? No settings at all counts as one way."""
+    return _signature(first) == _signature(second)
+
+
+def _say_settings(settings):
+    settings = _signature(settings)
+    if not settings:
+        return "no settings reported"
+    parts = []
+    if "gain" in settings:
+        parts.append("gain %s" % settings["gain"])
+    if settings.get("led") is False:
+        parts.append("light off")
+    elif "led_ma" in settings:
+        parts.append("light %s mA" % settings["led_ma"])
+    if not parts:
+        parts = ["%s %s" % (key, settings[key]) for key in sorted(settings)]
+    return ", ".join(parts)
+
+
 def _calibration_id(entry):
     body = json.dumps({key: entry.get(key) for key in ("identity", "white", "dark")}, sort_keys=True)
     return "dv1-" + hashlib.sha1(body.encode("utf-8")).hexdigest()[:8]
@@ -178,8 +208,11 @@ def _entry_for(data, printer_id, toolhead, identity):
     return None
 
 
-def head_status(printer_id, binding):
-    """Where this head's calibration stands, in words a person can act on."""
+def head_status(printer_id, binding, latest_settings=False):
+    """
+    Where this head's calibration stands, in words a person can act on. `latest_settings` is the settings of the
+    head's newest reading (None when it reported none); leave it False when there is no reading to compare.
+    """
     identity = {key: binding[key] for key in IDENTITY}
     if str(identity["sensor_model"]).upper() not in MODELS:
         return {"state": "unsupported", "supported": False, "has_white": False, "has_dark": False, "id": None,
@@ -192,13 +225,19 @@ def head_status(printer_id, binding):
                 "has_white": False, "has_dark": had_dark, "updated_at": entry and entry.get("updated_at"),
                 "message": "Put the white target in the housing, wait for a reading, then record the white "
                            "reference. For the optional dark reference, empty the housing and record that."}
+    if latest_settings is not False and not same_settings(entry["white"].get("settings"), latest_settings):
+        return {"state": "settings_changed", "supported": True, "id": None, "has_white": True,
+                "has_dark": bool(entry.get("dark")), "updated_at": entry.get("updated_at"),
+                "message": "The sensor's settings changed since the white reference was recorded (then %s, now %s). "
+                           "Record the white reference again." % (_say_settings(entry["white"].get("settings")),
+                                                                _say_settings(latest_settings))}
     return {"state": "ready", "supported": True, "id": _calibration_id(entry), "has_white": True,
             "has_dark": bool(entry.get("dark")), "updated_at": entry.get("updated_at"),
             "message": "Calibrated against a white reference." +
                        ("" if entry.get("dark") else " A dark reference is optional; it improves dark colours.")}
 
 
-def record_reference(printer_id, toolhead, identity, step, raw, captured_at):
+def record_reference(printer_id, toolhead, identity, step, raw, captured_at, settings=None):
     """Keep one reference for a head's sensor, or clear them all (step "clear"). Returns the head's status."""
     if step not in STEPS:
         raise ValueError("Choose white, dark or clear")
@@ -218,7 +257,13 @@ def record_reference(printer_id, toolhead, identity, step, raw, captured_at):
             raise ValueError("The sensor's raw values are missing channels: " + ", ".join(missing))
         entry = _entry_for(data, printer_id, toolhead, identity) or {
             "identity": {key: identity[key] for key in IDENTITY}, "white": None, "dark": None}
-        entry[step] = {"raw": values, "captured_at": captured_at}
+        if step == "dark" and entry["white"] and not same_settings(entry["white"].get("settings"), settings):
+            raise ValueError("The white reference was recorded with %s and this reading used %s. Record the dark "
+                             "reference with the same settings." % (_say_settings(entry["white"].get("settings")),
+                                                                   _say_settings(settings)))
+        if step == "white" and entry["dark"] and not same_settings(entry["dark"].get("settings"), settings):
+            entry["dark"] = None  # a dark reference from other settings would be wrong for this white one
+        entry[step] = {"raw": values, "captured_at": captured_at, "settings": settings}
         entry["updated_at"] = time.time()
         if entry["white"]:
             colour_from(identity["sensor_model"], entry["white"]["raw"], (entry["dark"] or {}).get("raw"),
@@ -228,11 +273,11 @@ def record_reference(printer_id, toolhead, identity, step, raw, captured_at):
     return head_status(printer_id, binding)
 
 
-def apply(printer_id, toolhead, identity, raw):
-    """A calibrated colour for a sample, or None when this exact sensor has no white reference."""
+def apply(printer_id, toolhead, identity, raw, settings=None):
+    """A calibrated colour for a sample, or None when this exact sensor has no white reference at these settings."""
     with _lock:
         entry = _entry_for(_load(), printer_id, toolhead, identity)
-    if not entry or not entry.get("white"):
+    if not entry or not entry.get("white") or not same_settings(entry["white"].get("settings"), settings):
         return None
     try:
         colour, flags = colour_from(identity["sensor_model"], entry["white"]["raw"], (entry["dark"] or {}).get("raw"),
@@ -241,6 +286,16 @@ def apply(printer_id, toolhead, identity, raw):
         return None
     return {"hex": colour, "calibration_id": _calibration_id(entry),
             "confidence": LOW_CONFIDENCE if flags else HIGH_CONFIDENCE, "source": "deja-vu1", "flags": flags}
+
+
+def references(printer_id, toolhead, identity):
+    """The white and dark references in force for a head's sensor (their raw counts and the settings they were taken at), or None."""
+    with _lock:
+        entry = _entry_for(_load(), printer_id, toolhead, identity)
+    if not entry or not entry.get("white"):
+        return None
+    return {"id": _calibration_id(entry), "white": entry["white"]["raw"], "dark": (entry.get("dark") or {}).get("raw"),
+            "settings": entry["white"].get("settings")}
 
 
 def reconcile(assigned):

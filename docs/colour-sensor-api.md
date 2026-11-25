@@ -1,8 +1,9 @@
 # Colour-checker companion API, version 1
 
 Deja Vu1 can receive colour-sensor observations from a separate companion device. This is the
-software contract for that device. No Pico firmware, sensor driver or physical accuracy result ships
-with it yet. The tests use synthetic messages and a stand-in printer.
+software contract for that device. Firmware for a Raspberry Pi Pico W with a Waveshare AS7341 ships in
+`hardware/colour-checker/` ([the guide](colour-checker.md)). The tests use synthetic messages, a stand-in
+Pico and a stand-in printer. No physical accuracy result exists.
 
 Raw channels stay raw. A companion can send raw counts only: once a head has a white reference
 recorded in Deja Vu1 (see Calibrate a sensor), Deja Vu1 works out the colour and keeps it with
@@ -103,9 +104,96 @@ and 1; values below 0.8 suppress the current colour. This is an initial display 
 measured accuracy threshold. A calibration ID records provenance; it does not prove that the
 reference, lighting, housing or sample is suitable. Only a bench test on known colours shows that.
 
-A successful reply has `accepted: true`, `version`, `printer_id`, `toolhead` and the current
-`sensor` observation. Invalid messages answer 400 without changing the previous observation.
+Three optional fields travel with a reading:
+
+| Field | Holds |
+|---|---|
+| `settings` | Up to 16 named numbers or true/false values for how the sensor was set (`gain`, `led_ma`, `led`, `atime`, `astep`, `full_scale`, `average` for the Pico firmware). A white reference records them. A later sample taken at other settings gets no colour and a sentence naming the difference. `average` does not count: it changes how steady a reading is, not how bright. |
+| `info` | Up to 8 named facts about the sender: numbers, true/false, plain text under 200 characters. The firmware sends `firmware`, `transport` (`wifi` or `usb`) and `rssi`, the Wi-Fi signal in dBm. |
+| `command_result` | The sensor's answer to a command (see Commands). |
+
+A successful reply has `accepted: true`, `version`, `printer_id`, `toolhead`, the current
+`sensor` observation, `server_time` (the app's Unix time in whole seconds) and `commands` (see Commands).
+Invalid messages answer 400 without changing the previous observation.
 Disabled modules answer 403. Incoming samples never send a command to a printer.
+
+### Time stamps for a sensor with no clock
+
+A CircuitPython float has about seven significant digits, so it cannot hold a Unix time to better than a few
+minutes. Send `captured_at` as a whole number of seconds. `GET /api/colorcheck/sensors` and every accepted reading
+return `server_time` as a whole number. A sensor that learns the offset between `server_time` and its own
+monotonic clock can stamp each reading on the app's clock. Never stamp ahead: a reading more than two seconds
+in the future is refused. The firmware also refuses to repeat a second, so readings two seconds apart never collide.
+
+### A sensor that is not assigned yet
+
+A reading from a sensor with no head answers 400 ("not assigned"), and the app remembers the sensor for ten
+minutes (at most 8). `GET /api/colorcheck/sensors` lists them under `unassigned` with their identity, `info`,
+`settings` and age, and the setup window offers them for a head. Assigning one takes it off the list.
+
+### Commands to a sensor
+
+`POST /api/colorcheck/command?printer=<id>` with `{"toolhead": "T0", "cmd": "autogain"}` queues one command for
+that head's sensor. The commands are:
+
+| `cmd` | Arguments | Does |
+|---|---|---|
+| `autogain` | none | Picks the highest gain that keeps the brightest channel under half of the chip's range. Put the white target in first. |
+| `set` | `gain` (0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256 or 512), `led_ma` (whole number, 4 to 20), `led` (true or false) | Changes the settings. The sensor keeps them across a power cycle. |
+| `new_sensor` | none | Gives the chip a new `sensor_id`, for after a board swap. The old calibration drops once the new ID is assigned. |
+
+A command waits for the sensor's next reading. The reply to that reading carries it in `commands`
+(`[{"id": 7, "cmd": "autogain"}]`) once, and the sensor answers in `command_result` on a later reading:
+`{"id": 7, "ok": true, "message": "..."}`. `GET /api/colorcheck/sensors` shows each head's `command` as `waiting`,
+`sent`, `done`, `failed` or `expired` (after 120 seconds) with the sensor's own words. One command waits per head,
+and a newer one replaces it. A sensor on USB answers its commands at once instead (see the serial protocol).
+
+### Connection details
+
+`GET /api/colorcheck/connection?printer=<id>` returns this computer's home-network addresses with the port, a
+`name.local` spare, the printer id, whether it is a physical printer and whether the device lock is on. The
+Right colour loaded? module switch gates it, and it stays out of the online demo's recording.
+
+### Pico serial protocol (USB)
+
+The firmware prints one line per message that starts with `DV1 ` and holds one JSON object. A host sends commands the
+same way, one line each. Anything else on the line is console chatter and a host ignores it. Never send Ctrl-C: it
+stops the program.
+
+| `t` | From the Pico | Holds |
+|---|---|---|
+| `hello` | on start, on request, when the sensor comes up | `protocol`, `firmware`, `sensor_ready`, the identity (`device_id`, `channel_id`, `sensor_id`, `sensor_model`), `settings` and `net` (the Wi-Fi's state without its password) |
+| `reading` | every two seconds | `seq`, `raw`, `quality_flags`, `settings` and the identity: everything the app's reading needs except `captured_at` |
+| `error` | on a fault, then every ten seconds | `code` (`wiring`, `no_sensor`, `library`, `sensor_lost`) and a sentence |
+| `ack`, `autogain` | after a command | `cmd`, `ok`, `message` and the command's own results |
+| `net` | when the Wi-Fi state changes | the same facts as `net` in `hello` |
+
+Commands to the Pico (`{"cmd": ...}`): `hello`, `set`, `autogain`, `new_sensor` as above, and over USB only
+`wifi_set` (`ssid`, `password`, `server`, `printer`, `code`: any of them), `wifi_clear` (erase what the app saved), `wifi_test`
+(join and reach the app now) and `net` (report the Wi-Fi state). The Pico stores the Wi-Fi details in its non-volatile
+memory, never repeats the password and refuses `wifi_*` commands that arrive over Wi-Fi.
+
+`quality_flags` from the firmware: `saturated` (the chip's own saturation bit, or a count at full scale), `low_light` (the
+brightest of the eight bands under 100 counts) and `unstable` (a band moved more than 10 % and 25 counts between the readings it
+averages, or the two banks of channels disagreed about the clear channel). A dark reference accepts `low_light`, because an
+empty holder is dim on purpose, and refuses every other flag.
+
+### Pico Wi-Fi behaviour
+
+The firmware reads `CIRCUITPY_WIFI_SSID`, `CIRCUITPY_WIFI_PASSWORD`, `DV1_SERVER` (addresses separated by commas),
+`DV1_PRINTER` and `DV1_PAIR_CODE` from `settings.toml`, joins the network, asks `GET /api/colorcheck/sensors?printer=<id>` for the time
+and posts each reading with `User-Agent: DejaVu1-sensor/<version>`. That agent does not count as an open page, so a powered sensor
+does not keep the app running. With the device lock on, a 401 with `pairing_required` makes the firmware redeem its pairing code
+once at `/api/pairing/redeem` and send the `dv_device` key it receives in `Set-Cookie` from then on.
+
+### Bench readings
+
+`POST /api/colorcheck/bench?printer=<id>` keeps the head's latest reading (under five seconds old, and newer than the last one
+kept) as a labelled sample: `{"toolhead", "spool": {"brand", "material", "name", "hex"}, "blind", "insertion", "mode"}`, where
+`hex` is the colour on the spool's label or listing and `mode` is `strand` or `surface`. The sample holds the app's own raw
+counts, flags, settings and the references in force, never values from the page. `GET /api/colorcheck/bench` lists them
+(`?full=1` adds the counts), and `POST /api/colorcheck/bench/delete` removes a sample (`id`) or a spool (`spool`). `tools/colour-bench.py`
+reports on them.
 
 ## Read status
 
@@ -144,7 +232,7 @@ report its own colour.
    removes the sensor's own offset and helps dark colours.
 4. `{"toolhead": "T0", "step": "clear"}` forgets both references.
 
-The reply is the head's calibration: `state` (`none`, `needs_white`, `ready` or `unsupported`), `id`
+The reply is the head's calibration: `state` (`none`, `needs_white`, `ready`, `settings_changed` or `unsupported`), `id`
 (`dv1-` and eight characters that change whenever a reference changes), whether a white and a dark
 reference exist, and a sentence saying what to do next. The same block is under `calibration` for each
 sensor in `GET /api/colorcheck/sensors`. The Right colour loaded? card has buttons for the three steps.
@@ -185,7 +273,7 @@ distance and the calibration used.
 ## Repeat the contract checks
 
 ```bash
-python3 -m unittest tests.test_companion_sensor tests.test_sensor_calibration tests.test_sanity_check
+python3 -m unittest tests.test_companion_sensor tests.test_sensor_calibration tests.test_sensor_settings tests.test_sensor_wifi tests.test_sanity_check
 ```
 
 These checks cover synthetic input, the local HTTP routes, printer separation, access checks, the

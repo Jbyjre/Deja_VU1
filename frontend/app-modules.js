@@ -240,6 +240,9 @@ async function loadColorCheck() {
     return;
   }
   $('colour-sensor-state').textContent = data.simulated ? 'Demo readings' : 'No sensor';
+  // Setting up needs an added printer: a demo printer cannot have a physical sensor.
+  $('colour-setup-bar').hidden = !!data.simulated || isModuleDisabled(data);
+  if (typeof ColourSetup !== 'undefined') ColourSetup.bindCard();
 
   if (isModuleDisabled(data)) {
     $('colour-sensor-state').textContent = 'Off';
@@ -306,7 +309,10 @@ async function loadColorCheck() {
   }
   if (data.overall === 'no_sensor') {
     $('colorfile').hidden = true;
-    paint($('colors'), EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.'));
+    const found = (data.unassigned || []).length;
+    paint($('colors'), found
+      ? EMPTY(found === 1 ? 'A colour checker is waiting' : 'Colour checkers are waiting', 'Press Set up the colour checker to give it a head.')
+      : EMPTY('No colour sensor set up', 'Press Set up the colour checker. It takes about ten minutes.'));
     $('colors-note').hidden = true;
     return;
   }

@@ -1,0 +1,83 @@
+/* colour-setup.css: the colour checker's setup window (colour-setup.js). Built from the shared tokens, so it follows
+ * light, dark and the accessibility fallbacks. The only raw colours are the eight band fills, which are data. */
+
+.colour-setup .dialog-panel {
+  width: min(800px, calc(100vw - 24px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.colour-setup [hidden] { display: none !important; }
+
+.cs-steps { list-style: none; margin: 14px 0 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 4px; }
+.cs-step { counter-increment: step; border-top: 1px solid var(--hair); padding: 14px 0 10px; min-width: 0; }
+.cs-step h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }
+.cs-mark {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center;
+  border: 1.5px solid var(--hair-strong); color: var(--text-dim); font: 600 11.5px var(--font-mono);
+}
+.cs-mark::before { content: counter(step); }
+.cs-mark[data-state="ok"] { background: var(--ok); border-color: var(--ok); color: var(--surface-solid, #fff); }
+.cs-step p { margin: 0 0 8px; }
+
+.cs-way { border: 1px solid var(--hair); border-radius: 10px; background: var(--well); margin: 8px 0; padding: 0 12px; }
+.cs-way > summary { cursor: pointer; padding: 10px 0; font-weight: 600; font-size: 12.5px; min-height: 24px; }
+.cs-way[open] > summary { border-bottom: 1px solid var(--hair); margin-bottom: 10px; }
+.cs-way > :last-child { margin-bottom: 12px; }
+
+.cs-check { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: 12.5px; color: var(--text); }
+.cs-check input { flex: none; width: 16px; height: 16px; }
+.cs-check em { color: var(--text-faint); font-style: normal; }
+.cs-fieldset { border: 1px solid var(--hair); border-radius: 10px; margin: 10px 0; padding: 8px 12px 6px; min-width: 0; }
+.cs-fieldset legend { padding: 0 6px; font-size: 12px; color: var(--text-dim); }
+.colour-setup .field input[type="text"], .colour-setup .field input[type="password"] { width: 100%; min-height: 32px; }
+
+.cs-problems { margin: 8px 0; padding-left: 18px; font-size: 12.5px; color: var(--bad-text, var(--bad)); }
+.cs-ways-title { margin: 14px 0 6px !important; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); }
+.cs-ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cs-ways > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.cs-ways .field-hint { flex: none; align-self: stretch; overflow-wrap: anywhere; }
+.cs-toml {
+  align-self: stretch; margin: 0; padding: 8px 10px; max-height: 150px; overflow: auto; border-radius: 8px;
+  background: var(--surface-2, var(--well)); border: 1px solid var(--hair);
+  font: 500 11.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text);
+}
+
+.cs-live { min-width: 0; }
+.cs-line { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; font-size: 12.5px; }
+.cs-dot { flex: none; width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--text-faint); }
+.cs-dot[data-state="ok"] { background: var(--ok); }
+.cs-dot[data-state="bad"] { background: var(--bad); }
+.cs-dot[data-state="wait"] { background: var(--warn); }
+.cs-list { margin: 4px 0 8px; padding-left: 18px; font-size: 12.5px; color: var(--text-dim); }
+.cs-found { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--hair); }
+.cs-found:last-child { border-bottom: 0; }
+.cs-found .field-row { flex: none; }
+.cs-found select { min-height: 30px; }
+.cs-usb { margin-bottom: 8px; }
+
+.cs-bars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; align-items: end; height: 150px; margin: 4px 0 6px; }
+.cs-bar { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+.cs-fill {
+  width: 100%; border-radius: 6px 6px 2px 2px; min-height: 2px;
+  background: oklch(66% 0.17 var(--hue)); transition: height 0.4s ease-out;
+}
+.cs-nm, .cs-val { font: 500 11px var(--font-mono); color: var(--text-dim); line-height: 1.5; }
+.cs-val { color: var(--text-faint); }
+.cs-bar { padding-bottom: 0; }
+.cs-big { width: 28px; height: 28px; border-radius: 8px; }
+
+.cs-led { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cs-led th { text-align: left; white-space: nowrap; padding: 6px 12px 6px 0; vertical-align: top; font-weight: 600; }
+.cs-led td { padding: 6px 0; color: var(--text-dim); }
+.cs-led tr + tr > * { border-top: 1px solid var(--hair); }
+
+.colour-setup-bar { display: flex; margin: 0 0 10px; }
+
+@media (max-width: 640px) {
+  .cs-ways { grid-template-columns: minmax(0, 1fr); }
+  .cs-bars { gap: 4px; height: 130px; }
+  .colour-setup .dialog-panel { max-height: calc(100vh - 16px); }
+}
+@media (prefers-reduced-motion: reduce) { .cs-fill { transition: none; } }
+@media (prefers-contrast: more) { .cs-way, .cs-ways > div, .cs-fieldset, .cs-toml { border-color: var(--text-dim); } }
