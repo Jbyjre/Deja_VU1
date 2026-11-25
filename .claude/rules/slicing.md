@@ -143,7 +143,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 - Saved sets (`slicer-sets.js`): a set is the print preset's name, `state.overrides`, the speed, `state.preset.filaments` and `state.preset.tune`, kept in `dejavu1.slicer.sets` (30 at most) and exported as
   `{format: 'deja-vu1-slicer-settings', version: 1, ...}`. An imported file goes through `clean()`: keys must match `[a-z0-9_]` and be in `/api/slicer/schema`, values must be numbers, booleans or short strings, tune
   numbers inside `filament_limits`, the speed held to 50 to 120, the name stripped of control characters and angle brackets; what is dropped is counted and reported. Heads' colours and spools are never in a set.
-- Checks: `node tools/slicer-check.js` (103 checks, 15 of them on Cut, saving a part and slicing it, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+- Checks: `node tools/slicer-check.js` (104 checks, 16 of them on Cut, saving a part and slicing it, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights
