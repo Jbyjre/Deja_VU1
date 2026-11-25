@@ -256,6 +256,13 @@ def _summarize(name):
                         png = safe_zip.read(z, part, limit=8 * 1024 * 1024, what="3MF file")
                         thumb = png if png.startswith(b"\x89PNG\r\n\x1a\n") else None
                         break
+                try:
+                    import project_plates          # imported here: it imports this module
+                    plates = project_plates.describe_data(data)["count"]
+                except ValueError:
+                    plates = 0
+                if plates > 1:
+                    summary["plates"] = plates
             if thumb is None:
                 thumb = mesh_tools.png_thumbnail(model["sample"])
     except (ValueError, KeyError, OSError) as exc:

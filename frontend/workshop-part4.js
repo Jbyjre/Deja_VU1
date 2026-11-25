@@ -57,27 +57,72 @@ function renderLocalFiles() {
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b));
   }
 
+  /* Search and sort for the library (MODELS.3). The sort is remembered on this device. */
+  const FILE_SORT_KEY = 'dejavu1.files.sort';
+  const fileView = { q: '', sort: (() => { try { return localStorage.getItem(FILE_SORT_KEY) || 'new'; } catch (_) { return 'new'; } })() };
+  const tinyModel = s => !!(s && s.size_mm && Math.max(...s.size_mm) > 0 && Math.max(...s.size_mm) < 10);
+
+function shownFiles(list) {
+    const q = fileView.q.trim().toLowerCase();
+    const out = q ? list.filter(f => {
+      const s = f.summary || {}, src = f.source || {};
+      return [f.name, f.note, src.designer, src.site, src.title, ...(s.materials || [])].filter(Boolean).join(' ').toLowerCase().includes(q);
+    }) : list.slice();
+    const used = f => (f.last_opened || '') > (f.last_printed || '') ? f.last_opened || '' : f.last_printed || '';
+    const hours = f => (f.summary && f.summary.estimated_hours != null) ? f.summary.estimated_hours : -1;
+    if (fileView.sort === 'name') out.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    else if (fileView.sort === 'used') out.sort((a, b) => used(b).localeCompare(used(a)));
+    else if (fileView.sort === 'long') out.sort((a, b) => hours(b) - hours(a));
+    return out;
+  }
+
+function wireFileTools() {
+    const q = $('file-q'), sort = $('file-sort');
+    if (!q || q.dataset.wired) return;
+    q.dataset.wired = '1';
+    sort.value = fileView.sort;
+    if (sort.value !== fileView.sort) { fileView.sort = 'new'; sort.value = 'new'; }
+    q.addEventListener('input', () => { fileView.q = q.value; renderFileGrid(); });
+    sort.addEventListener('change', () => {
+      fileView.sort = sort.value;
+      try { localStorage.setItem(FILE_SORT_KEY, sort.value); } catch (_) {}
+      renderFileGrid();
+    });
+  }
+
 async function loadFiles() {
     const grid = $('file-grid');
     if (!grid) return;
     const data = await getJSON('/api/files').catch(() => null);
-    if (data && data.server_missing) { renderLocalFiles(); return; }
-    if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; return; }
+    if (data && data.server_missing) { if ($('file-tools')) $('file-tools').hidden = true; renderLocalFiles(); return; }
+    if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; if ($('file-tools')) $('file-tools').hidden = true; return; }
     files.list = (data && data.files) || [];
     if ($('convert-card')) $('convert-card').hidden = modGate.off.has('converter');
     $('file-recent').innerHTML = data && data.recent && data.recent.length
       ? `<span class="fr-label">Recent</span>${data.recent.map(n => `<button class="chip-btn" data-open-file="${esc(n)}" type="button">${esc(n)}</button>`).join('')}` : '';
-    grid.innerHTML = files.list.length ? files.list.map(f => {
+    wireFileTools();
+    renderFileGrid();
+  }
+
+function renderFileGrid() {
+    const grid = $('file-grid');
+    if (!grid) return;
+    if ($('file-tools')) $('file-tools').hidden = files.list.length < 2;
+    const shown = shownFiles(files.list);
+    grid.innerHTML = files.list.length && !shown.length
+      ? `<p class="log-empty">No file matches "${esc(fileView.q.trim())}". Try part of its name, a material such as PETG, or a designer.</p>`
+      : files.list.length ? shown.map(f => {
       const s = f.summary || {};
       const verdict = s.preflight ? `<span class="pf-badge ${s.preflight}">${{ clear: 'Pre-flight clear', check: 'Check warnings', blocked: 'Blocked' }[s.preflight]}</span>` : '';
       const meta = f.kind === 'gcode'
         ? `${fmtHours(s.estimated_hours)} · ${s.filament_grams != null ? s.filament_grams.toFixed(1) + ' g' : '—'} · ${(s.tools_used || []).join(' ')}`
-        : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
+        : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(s.size_mm.some(x => x < 10) ? 1 : 0)).join(' × ')} mm · ${s.plates > 1 ? `${s.plates} plates` : `${(s.triangles || 0).toLocaleString()} triangles`}` : (s.error || ''));
+      const tiny = f.kind !== 'gcode' && tinyModel(s) ? '<span class="pf-badge check">May be in inches</span>' : '';
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
           <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
-          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate', download: 'from the web' }[f.origin] || f.origin)}</span>` : ''}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${tiny}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate', download: 'from the web' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
     }).join('') : `<button type="button" class="file-empty" id="file-empty">
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -120,6 +165,11 @@ async function openFile(name, fromEl) {
     // Where a model came from (models.js), so its designer is always credited.
     const credit = $('fd-source');
     if (credit) { credit.innerHTML = entry.source && window.Models ? Models.sourceHtml(entry.source) : ''; credit.hidden = !credit.innerHTML; }
+    if (entry.kind !== 'gcode' && tinyModel(s)) {
+      const across = Math.max(...s.size_mm).toFixed(1);
+      const warn = `It's only ${across} mm across, so it may have been drawn in inches. Open it in the Slicer and press Scale × 25.4 on its warning.`;
+      $('fd-sub').textContent = $('fd-sub').textContent ? `${$('fd-sub').textContent}. ${warn}` : warn;
+    }
     $('fd-side').innerHTML = '<p class="log-empty">Reading the file…</p>';
     $('fd-gcode').hidden = entry.kind !== 'gcode';
     $('fd-view-tools').innerHTML = '';

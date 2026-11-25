@@ -275,7 +275,30 @@ class TestRoute(InboxCase):
         self.assertIn("public", body["error"])
 
 
+class TestLibrary(InboxCase):
+
+    def test_a_project_with_plates_says_how_many(self):
+        with open(os.path.join(ROOT, "frontend", "demo", "files", "sample_makerworld_three_plates.3mf"), "rb") as f:
+            data = f.read()
+        self.made.append("plates-test.3mf")
+        file_library.save("plates-test.3mf", data)
+        self.assertEqual(file_library.describe("plates-test.3mf")["summary"].get("plates"), 3)
+
+    def test_a_single_model_has_no_plate_count(self):
+        self.made.append("boat-test.3mf")
+        file_library.save("boat-test.3mf", three_mf())
+        self.assertNotIn("plates", file_library.describe("boat-test.3mf")["summary"])
+
+
 class TestPage(unittest.TestCase):
+
+    def test_the_library_can_be_searched_and_sorted(self):
+        page = read_frontend("index.html")
+        for part in ('id="file-q"', 'id="file-sort"', 'value="used"', 'value="long"'):
+            self.assertIn(part, page)
+        js = read_frontend("workshop-part4.js")
+        self.assertIn("dejavu1.files.sort", js)
+        self.assertIn("May be in inches", js)
 
     def test_search_links_open_in_a_new_tab_without_an_opener(self):
         js = read_frontend("models.js")

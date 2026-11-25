@@ -716,6 +716,17 @@
         </div>
         <div id="file-drop" class="file-drop" hidden>Drop files to add them</div>
         <div id="file-recent" class="file-recent"></div>
+        <div class="file-tools" id="file-tools" hidden>
+          <label class="sr-only" for="file-q">Search your files</label>
+          <input type="search" id="file-q" placeholder="Search by name, material or designer" autocomplete="off">
+          <label class="sr-only" for="file-sort">Sort your files</label>
+          <select id="file-sort">
+            <option value="new">Newest first</option>
+            <option value="used">Last used first</option>
+            <option value="name">By name</option>
+            <option value="long">Longest print first</option>
+          </select>
+        </div>
         <div id="file-grid" class="file-grid"></div>
       </section>
 
