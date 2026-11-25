@@ -130,8 +130,8 @@ def read_text(name):
     return read_bytes(name).decode("utf-8", errors="replace")
 
 
-def save(name, data, origin="upload", note=None):
-    """Add or replace a file. Returns its library entry."""
+def save(name, data, origin="upload", note=None, source=None):
+    """Add or replace a file. Returns its library entry. source: where a model came from (site, page, designer...)."""
     name = clean_name(name)
     if not data:
         raise ValueError("The file is empty")
@@ -147,6 +147,10 @@ def save(name, data, origin="upload", note=None):
                       "modified_at": _now()})
         if note:
             entry["note"] = note
+        if source:
+            entry["source"] = dict(source)
+        elif origin not in ("edited", "restored"):
+            entry.pop("source", None)       # a new file under the same name came from somewhere else
         index[name] = entry
         _save_index(index)
     return describe(name)

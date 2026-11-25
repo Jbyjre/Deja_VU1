@@ -19,6 +19,7 @@ import companion_sensor
 import comparison
 import cost_calculator
 import plugins
+import model_inbox
 import desktop
 import discovery
 import engine_installer
@@ -219,6 +220,7 @@ _APP_ROUTES = {
     "/api/app/memory": (None, lambda q: memory.status()),
     "/api/plugins": (None, lambda q: plugins.listing()),
     "/api/plugins/pane": (None, lambda q: plugins.pane(_q(q, "id"))),
+    "/api/models/inbox": ("file_library", lambda q: model_inbox.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,

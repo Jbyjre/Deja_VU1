@@ -15,6 +15,7 @@ import webrtc_relay
 import file_library
 import live_feed
 import mock_moonraker
+import model_inbox
 import modules
 import pairing
 import print_record
@@ -211,6 +212,11 @@ class GetRoutes:
                 return None
             filename, data = tester_report.build_zip()
             return self._send_bytes(data, "application/zip", filename=filename)
+
+        if route == "/api/models/inbox":
+            if self._module_blocked("file_library"):
+                return None
+            return self._send_json(model_inbox.status(here=self._this_computer()))
 
         if route in _APP_ROUTES:
             module_id, producer = _APP_ROUTES[route]

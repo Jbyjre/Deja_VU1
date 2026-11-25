@@ -729,7 +729,7 @@
 
     <section class="card liquid-glass file-detail" id="file-detail" hidden>
       <div class="card-head">
-        <div><h2 id="fd-name">—</h2><p class="card-sub" id="fd-sub"></p></div>
+        <div><h2 id="fd-name">—</h2><p class="card-sub" id="fd-sub"></p><p class="field-hint fd-source" id="fd-source" hidden></p></div>
         <button class="btn small" id="fd-close" type="button">Close</button>
       </div>
       <div id="sw-header" hidden></div>
@@ -947,15 +947,49 @@
       <button class="btn small" type="button" data-open-tab="files" id="models-to-profiles">Open the U1 profiles converter</button>
     </section>
     <section class="pane-block models-sites" id="models-sites" aria-labelledby="models-sites-title">
-      <h2 id="models-sites-title">Model sites</h2>
-      <p class="card-sub">Each one opens in a new tab. Deja Vu1 sends them nothing.</p>
-      <ul class="site-list">
+      <h2 id="models-sites-title">Find a model</h2>
+      <p class="card-sub">A search opens in a new tab. Star the sites you use and the search looks on those.</p>
+      <form class="models-search" id="models-search" role="search">
+        <label class="sr-only" for="models-q">What are you looking for?</label>
+        <input type="search" id="models-q" maxlength="120" autocomplete="off" placeholder="Benchy, cable clip, plant pot" aria-describedby="models-search-hint">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <p class="field-hint" id="models-search-hint"></p>
+      <div class="models-recent" id="models-recent" hidden></div>
+      <ul class="site-list" id="models-site-list">
         <li><a class="site-row" href="https://makerworld.com/" target="_blank" rel="noopener noreferrer"><b>MakerWorld</b><span>makerworld.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
         <li><a class="site-row" href="https://www.printables.com/" target="_blank" rel="noopener noreferrer"><b>Printables</b><span>www.printables.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
         <li><a class="site-row" href="https://www.thingiverse.com/" target="_blank" rel="noopener noreferrer"><b>Thingiverse</b><span>www.thingiverse.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
         <li><a class="site-row" href="https://thangs.com/" target="_blank" rel="noopener noreferrer"><b>Thangs</b><span>thangs.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
         <li><a class="site-row" href="https://cults3d.com/" target="_blank" rel="noopener noreferrer"><b>Cults</b><span>cults3d.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
       </ul>
+      <h3 class="models-sub">Snapmaker</h3>
+      <ul class="site-list is-small" id="models-snapmaker"></ul>
+    </section>
+    <section class="pane-block models-inbox" id="models-inbox" aria-labelledby="models-inbox-title">
+      <h2 id="models-inbox-title">Bring it in</h2>
+      <p class="card-sub" id="models-inbox-sub">Download from any site the usual way. With Watch my Downloads on, each model you download shows up here and at the bottom of the screen: open it on a Slicer plate or keep it in Files.</p>
+      <div class="models-watch">
+        <label class="switch" for="models-watch"><span class="switch-label">Watch my Downloads</span>
+          <input type="checkbox" id="models-watch" aria-describedby="models-watch-where"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label>
+        <p class="field-hint" id="models-watch-where"></p>
+      </div>
+      <details class="models-folder">
+        <summary>Watch another folder</summary>
+        <form class="inline-form" id="models-folder-form">
+          <label class="sr-only" for="models-folder">Folder to watch</label>
+          <input type="text" id="models-folder" autocomplete="off" spellcheck="false" placeholder="C:\Users\you\Downloads">
+          <button class="btn" type="submit">Use this folder</button>
+        </form>
+      </details>
+      <div class="models-offers" id="models-offers" aria-live="polite"></div>
+      <form class="inline-form models-link" id="models-link-form">
+        <label for="models-link">Or paste a link to a model file</label>
+        <input type="url" id="models-link" placeholder="https://…/model.3mf" autocomplete="off" spellcheck="false">
+        <button class="btn" type="submit">Bring it in</button>
+      </form>
+      <h3 class="models-sub">Brought in lately</h3>
+      <ul class="models-imports" id="models-imports"><li class="field-hint keep">Nothing yet. Models you bring in are listed here with where they came from.</li></ul>
     </section>
 
   </section>
@@ -1409,13 +1443,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       <div id="plugins-list"><p class="log-empty is-loading">Loading…</p></div>
       <p class="field-hint keep">How to write one, with an example: docs/plugins.md in Deja Vu1's files. If a plugin ever stops Deja Vu1 from opening, open it with ?safe=1 at the end of the address to start with every plugin off.</p>
     </section>
-    <dialog class="glass-dialog plugin-pane" id="plugin-pane" aria-labelledby="plugin-pane-title">
-      <div class="dialog-panel liquid-glass deep">
-        <div class="plugin-pane-head"><h2 id="plugin-pane-title">Plugin</h2><button type="button" class="btn" id="plugin-pane-close">Close</button></div>
-        <p class="field-hint" id="plugin-pane-note" role="status"></p>
-        <div id="plugin-pane-body"></div>
-      </div>
-    </dialog>
     <div class="grid-2" style="align-items:start;">
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Optional extras</h2><p class="card-sub">Add-ons that need something outside Deja Vu1: a program you install, a device, or another service. Switch on only what you use. Everything else is part of Deja Vu1 and always on.</p></div></div>
@@ -1705,6 +1732,13 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 </div>
 
 <!-- Dialogs: glass laid over glass - they use the "deep" refraction. -->
+<dialog class="glass-dialog plugin-pane" id="plugin-pane" aria-labelledby="plugin-pane-title">
+  <div class="dialog-panel liquid-glass deep">
+    <div class="plugin-pane-head"><h2 id="plugin-pane-title">Plugin</h2><button type="button" class="btn" id="plugin-pane-close">Close</button></div>
+    <p class="field-hint" id="plugin-pane-note" role="status"></p>
+    <div id="plugin-pane-body"></div>
+  </div>
+</dialog>
 <dialog class="glass-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
   <div class="dialog-panel liquid-glass deep" data-tint>
     <div class="card-head">
@@ -1867,6 +1901,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="recall.js"></script>
 <script src="replay.js"></script>
 <script src="plugins.js"></script>
+<script src="models.js"></script>
 <script src="printroom.js"></script>
 <script src="gcode-view.js"></script>
 <script src="slicer-model.js"></script>

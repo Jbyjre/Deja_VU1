@@ -77,7 +77,7 @@ async function loadFiles() {
           <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
           <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
-          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate' }[f.origin] || f.origin)}</span>` : ''}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate', download: 'from the web' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
     }).join('') : `<button type="button" class="file-empty" id="file-empty">
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -116,7 +116,10 @@ async function openFile(name, fromEl) {
     if (window.Recall && !entry.local) Recall.intoFiles(recallHost, name);   // printed before: how it went
     else recallHost.hidden = true;
     const s = entry.summary || {};
-    $('fd-sub').textContent = entry.note || ({ sample: 'Sample file', converted: 'Converted for the Snapmaker U1', edited: 'Edited here', upload: 'Uploaded' }[entry.origin] || '');
+    $('fd-sub').textContent = entry.note || ({ sample: 'Sample file', converted: 'Converted for the Snapmaker U1', edited: 'Edited here', upload: 'Uploaded', download: 'Brought in from the web' }[entry.origin] || '');
+    // Where a model came from (models.js), so its designer is always credited.
+    const credit = $('fd-source');
+    if (credit) { credit.innerHTML = entry.source && window.Models ? Models.sourceHtml(entry.source) : ''; credit.hidden = !credit.innerHTML; }
     $('fd-side').innerHTML = '<p class="log-empty">Reading the file…</p>';
     $('fd-gcode').hidden = entry.kind !== 'gcode';
     $('fd-view-tools').innerHTML = '';

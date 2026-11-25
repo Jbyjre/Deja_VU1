@@ -39,6 +39,7 @@ import modules
 import notifications
 import pairing
 import plugins
+import model_inbox
 import photo_studio
 import memory
 import orca_import
@@ -789,6 +790,26 @@ class PostRoutes:
             if act == "remove":
                 return self._send_json(plugins.remove(pid))
             raise ValueError("Pick an action: on, grant, safe_start, error, approve_real, install or remove")
+
+        if route == "/api/models/inbox":
+            if self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            act = body.get("action")
+            if act == "link":
+                return self._send_json(model_inbox.fetch_link(body.get("url")))
+            # The watcher reads a folder on this computer, so only this computer may point it or take from it.
+            if not self._this_computer():
+                return self._send_json({"error": "Watch my Downloads works on the computer running Deja Vu1, at "
+                                                 "http://localhost:%d" % PORT}, status=403)
+            if act == "watch":
+                return self._send_json(model_inbox.set_watch(body.get("on") in (True, 1, "1", "true"),
+                                                             body.get("folder")))
+            if act == "take":
+                return self._send_json(model_inbox.take(body.get("name")))
+            if act == "dismiss":
+                return self._send_json(model_inbox.dismiss(body.get("name")))
+            raise ValueError("Pick an action: link, watch, take or dismiss")
 
         if route == "/api/plugins/call":
             body = self._read_json_body()
