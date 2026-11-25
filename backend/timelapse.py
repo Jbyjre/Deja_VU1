@@ -65,7 +65,7 @@ def begin(printer_id, filename, source):
                           {"session": session, "filename": filename, "source": source,
                            "started_at": datetime.now().isoformat(timespec="seconds"),
                            "frames": 0, "finished": False}, indent=None)
-        _active[printer_id] = {"session": session, "last_layer": -99, "last_at": time.monotonic()}
+        _active[printer_id] = {"session": session, "last_layer": -99, "last_at": time.monotonic(), "frames": 0}
         _prune(printer_id)
     return session
 
@@ -93,7 +93,7 @@ def resume(printer_id, filename):
                     and 0 <= age < RESUME_HOURS * 3600):
                 last = meta.get("last_layer")
                 _active[printer_id] = {"session": session, "last_layer": last if isinstance(last, int) else -99,
-                                       "last_at": time.monotonic()}
+                                       "last_at": time.monotonic(), "frames": meta.get("frames") or 0}
                 return True
         return False
 
@@ -125,6 +125,7 @@ def maybe_capture(printer_id, layer, frame_bytes, extension, force=False):
             info["last_layer"] = layer
         storage.save_json(meta_path, meta, indent=None)
         info["last_at"] = time.monotonic()
+        info["frames"] = meta["frames"]
         return True
 
 
@@ -146,6 +147,12 @@ def current_session(printer_id):
     with _lock:
         info = _active.get(printer_id)
         return info["session"] if info else None
+
+
+def frames_taken(printer_id):
+    """How many frames the running time-lapse holds so far, or None when none is recording (print_track.py keeps it per point)."""
+    info = _active.get(printer_id)
+    return info.get("frames") if info else None
 
 
 def is_recording(printer_id):

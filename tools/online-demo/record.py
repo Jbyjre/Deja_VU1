@@ -59,6 +59,8 @@ PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/pr
             "/api/colours/plan": "name", "/api/print/preview": "file", "/api/prints/recall": "file",
             "/api/prints/repeat": "file"}
 EVERY_FILE = ("/api/files/plates", "/api/colours/plan", "/api/prints/recall", "/api/prints/repeat")   # models and G-code alike
+# Routes that need a print from the record: one answer for each ended G-code print in the demo history.
+PER_PRINT = ("/api/prints/replay", "/api/prints/replay/layers")
 # Parameters that don't change the answer, so they aren't part of the key.
 IGNORED = {"demo", "since", "v", "t", "_", "device"}
 # Routes the dashboard asks with set parameters, and each set it uses.
@@ -186,6 +188,13 @@ def record():
                             if a != b:
                                 params = {"demo": 1, "printer": pid, "a": a, "b": b}
                                 keep(key_for(path, params), *srv.get(path, **params))
+                    continue
+                if path in PER_PRINT:
+                    _, listing = srv.get("/api/prints", demo=1, printer=pid)
+                    for row in listing.get("prints", []) if isinstance(listing, dict) else []:
+                        if row.get("status") != "running" and str(row.get("file") or "").endswith(".gcode"):
+                            params = {"demo": 1, "printer": pid, "id": row["id"]}
+                            keep(key_for(path, params), *srv.get(path, **params))
                     continue
                 if path in PER_FILE:
                     for name in (names if path in EVERY_FILE else gcode):

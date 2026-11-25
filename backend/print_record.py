@@ -25,6 +25,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import file_library
+import print_track
 import storage
 
 _DATA_DIR = storage.DATA_DIR
@@ -292,6 +293,7 @@ def forget(entry_id):
             os.remove(_picture_path(entry_id, kind))
         except OSError:
             pass
+    print_track.remove(entry_id)
     return {"forgotten": entry_id}
 
 
@@ -326,6 +328,7 @@ def _prune(data):
     kept = {e.get("id") for e in data["prints"]}
     gone = [e for e in before if e.get("id") not in kept]
     for e in gone:
+        print_track.remove(e.get("id"))
         if e.get("picture"):
             try:
                 os.remove(_picture_path(e["id"], e["picture"]))
@@ -433,6 +436,7 @@ def get(entry_id, demo=False, printer_history=None, printer_id=None, printer_nam
 
 
 def reset():
+    print_track.reset()
     with _lock:
         _save(_blank())
     if os.path.isdir(_PICTURES):

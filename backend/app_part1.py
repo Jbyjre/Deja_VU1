@@ -248,6 +248,8 @@ _APP_ROUTES = {
     "/api/prints/recall": (None, lambda q: _recall(q, recall.about)),
     "/api/prints/repeat": (None, lambda q: _recall(q, recall.like_last_time)),
     "/api/prints/facts": (None, lambda q: _recall_facts(q)),
+    "/api/prints/replay": (None, lambda q: _replay(q, recall.replay)),
+    "/api/prints/replay/layers": (None, lambda q: _replay(q, recall.replay_layers)),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
@@ -299,6 +301,12 @@ def _recall_facts(q):
     """RECALL.3: plain facts from the ended prints in the record, each with the prints behind it."""
     pid = mock_moonraker.selected_printer_id()
     return recall.facts(_demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
+
+
+def _replay(q, ask):
+    """RECALL.2: one ended print to play back on the twin, or its G-code's layers."""
+    pid = mock_moonraker.selected_printer_id()
+    return ask(_q(q, "id"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
 
 
 def _tester_study(q):

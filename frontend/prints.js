@@ -95,6 +95,7 @@
         <div class="pr-acts">
           <button class="btn small primary" type="button" data-reprint="${esc(p.file || '')}"${p.in_library && p.status !== 'running' ? '' : ' disabled'}>Reprint</button>
           ${p.model ? `<button class="btn small" type="button" data-slicer="${esc(p.model)}">Open in Slicer</button>` : ''}
+          ${p.status !== 'running' && /\.gcode$/i.test(p.file || '') ? `<button class="btn small" type="button" data-replay="${esc(p.id)}">Replay</button>` : ''}
           ${p.timelapse ? `<button class="btn small" type="button" data-tl="${esc(p.timelapse)}" data-tl-printer="${esc(p.printer || '')}" data-tl-name="${esc(p.file || '')}">Time-lapse</button>` : ''}
           ${p.from_printer || p.status === 'running' ? '' : `<button class="btn small ghost" type="button" data-forget="${esc(p.id)}">Remove</button>`}
         </div>
@@ -183,12 +184,13 @@
     }
     if ((b = hit('[data-reprint]'))) { if (window.Workshop) Workshop.openConfirm(b.dataset.reprint, b); return; }
     if ((b = hit('[data-slicer]'))) { if (window.Slicer) Slicer.open(b.dataset.slicer); return; }
+    if ((b = hit('[data-replay]'))) { if (window.Replay) Replay.open(b.dataset.replay, b); return; }
     if ((b = hit('[data-tl]'))) {
       if (window.Player) Player.frames(b.dataset.tl, { printer: b.dataset.tlPrinter, title: b.dataset.tlName });
       return;
     }
     if ((b = hit('[data-forget]'))) {
-      if (!confirm('Remove this print from the record? Its picture and note are deleted from this computer.')) return;
+      if (!confirm('Remove this print from the record? Its picture, note and replay readings are deleted from this computer.')) return;
       const r = await postJSON('/api/prints/forget', { id: b.dataset.forget }).catch(() => null);
       if (r && r.ok) { open = null; toast('Removed from the record', 'ok'); load(); } else toast((r && r.body && r.body.error) || 'Nothing was removed', 'bad');
     }
