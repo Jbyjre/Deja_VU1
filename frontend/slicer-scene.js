@@ -197,6 +197,7 @@ window.SliceScene = (() => {
       super(canvas);
       const gl = this.gl;
       this.items = new Map();
+      this.overlays = [];
       this.listeners = {};
       this.mode = 'prepare';          // 'prepare' draws the objects, 'preview' draws the toolpath
       this.tool = 'move';             // which handles show on the selected object: move, rotate, scale or none
@@ -472,6 +473,7 @@ window.SliceScene = (() => {
         this.drawItems(m, light, false);
         this.drawOutlines(m, light);
         this.drawHandles(m, light, false);
+        for (const draw of this.overlays) draw(this, m, light);        // other parts draw into the plate view here (the cut plane, slicer-cutui.js)
       } else if (this.pathBuf) this.drawPath(m);
     }
 

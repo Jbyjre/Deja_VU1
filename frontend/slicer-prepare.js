@@ -18,6 +18,7 @@
       { id: 'rotate', icon: 'rotate', label: 'Rotate', key: 'R', tool: true, needs: 'sel' },
       { id: 'scale', icon: 'scale', label: 'Scale', key: 'S', tool: true, needs: 'sel' },
       { id: 'face', icon: 'face', label: 'Lay on face', key: 'F', tool: true, needs: 'sel' },
+      { id: 'cut', icon: 'cut', label: 'Cut', key: 'C', tool: true, needs: 'sel' },
       { id: 'split', icon: 'split', label: 'Split into parts', key: '', run: () => splitSelected(), needs: 'sel' }] },
     { group: 'Check', items: [
       { id: 'measure', icon: 'measure', label: 'Measure', key: 'U', tool: true, needs: 'objects' },
@@ -80,6 +81,8 @@
     state.measure = null;
     note(state.tool === 'face' ? 'Click the face that should lie flat on the plate.' : state.tool === 'measure' ? 'Click two points on a model to measure between them.' : '');
     refreshTools();
+    renderInspector('tool');                   // the Cut tool puts its own panel where the object's numbers are
+    if (S()) S().draw();
   }
 
   function toggleOverhang() {
@@ -122,9 +125,13 @@
   function splitSelected() {
     const id = [...P().selected][0];
     if (!id) return;
+    const painted = !!(P().get(id) && P().get(id).mesh.colours);
     const made = P().splitParts(id);
     if (!made.length) note('This model is one solid piece, so there is nothing to split.', 4000);
-    else say(`Split into ${made.length} parts.`, 'ok');
+    else {
+      say(`Split into ${made.length} parts.`, 'ok');
+      if (painted) say('The colours painted in the file are not kept in the parts. Each part prints with one head.', 'info');
+    }
   }
 
   /* The quick arrangement, or the engine's when it is installed (slicer-preview.js asks the engine first). */
@@ -315,6 +322,8 @@
   function renderInspector(kind) {
     const m = P(), box = q('#sl-insp');
     const ids = [...m.selected].filter(id => m.get(id) && m.get(id).plate === m.current);
+    if (state.tool === 'cut' && ids.length === 1 && SL.cut) { box.hidden = false; box.dataset.obj = ''; SL.cut.panel(box, m.get(ids[0]), kind); setInsets(); return; }
+    if (SL.cut) SL.cut.leave();
     // Only the numbers changed (a move, a turn, a size): update them where they stand, so a field being typed in keeps its focus and its text.
     if (kind === 'transform' && ids.length === 1 && !box.hidden && box.dataset.obj === String(ids[0]) && q('#sl-i-x')) { fillInspectorNumbers(); return; }
     box.dataset.obj = ids.length === 1 ? String(ids[0]) : '';
@@ -599,7 +608,7 @@
     try {
       for (const src of clip) {
         const o = m.add({ name: src.file, label: src.name, sourceName: src.sourceName, local: src.local, mesh: src.mesh, tool: src.tool, transform: src.transform, settings: src.settings,
-          keepColour: src.keepColour }, { checkpoint: false });
+          keepColour: src.keepColour, edited: src.edited, srcKey: src.srcKey }, { checkpoint: false });
         m.placeInFreeSpot(o);
         made.push(o.id);
       }
@@ -649,6 +658,7 @@
     if (mod && digit !== null && digit <= 6) v.setView(VIEWS[digit][0]);
     else if (mod && k === 'r' && !shift) SL.preview && SL.preview.sliceKey();
     else if (mod && k === 'g') { if (shift) SL.preview && SL.preview.printKey(); else SL.preview && SL.preview.saveKey(); }
+    else if (mod && k === 's' && !shift) SL.preview && SL.preview.saveProject();
     else if (mod && k === 'i') q('#sl-file').click();
     else if (mod && !prepare) handled = SL.path && SL.path.key ? SL.path.key(e) : false;
     else if (mod) {
@@ -682,6 +692,7 @@
     else if (k === 'r') setTool('rotate');
     else if (k === 's') setTool('scale');
     else if (k === 'f') setTool('face');
+    else if (k === 'c') { if (ids.length) setTool('cut'); else note('Select a model first, then C cuts it with a plane.', 3500); }
     else if (k === 'u') setTool('measure');
     else if (k === 'escape') { if (state.tool !== 'move') setTool('move'); else { m.selected = new Set(); v.select([]); renderObjects(); renderInspector(); refreshTools(); } }
     else if (k === 'home') v.fitSelection();
@@ -726,10 +737,17 @@
      opens again. An object that was only read from a file on this computer has no copy to come back to, so it is left out. */
   const PKEY = 'dejavu1.slicer.project';
   let saveTimer = 0;
+  /* A cut or split piece has no file until it is saved to the library (slicer-cutui.js); the project is written once that is done. */
   function writeProject() {
     const m = P();
+    const waiting = m && SL.sources && !SL.demo() ? m.objects.filter(o => o.edited && !o.srcKey) : [];
+    if (!waiting.length) { writeNow(); return; }
+    SL.sources.ensure(waiting).catch(() => { /* a piece that cannot be saved stays out of the project */ }).then(writeNow);
+  }
+  function writeNow() {
+    const m = P();
     if (!m) return;
-    const rows = m.objects.filter(o => o.sourceName && !o.local).map(o => ({ source: o.sourceName, name: o.name, file: o.file, transform: o.transform, tool: o.tool, settings: o.settings, plate: o.plate, hidden: o.hidden, aside: o.aside }));
+    const rows = m.objects.filter(o => o.sourceName && !o.local && (!o.edited || o.srcKey)).map(o => ({ source: o.sourceName, name: o.name, file: o.file, transform: o.transform, tool: o.tool, settings: o.settings, plate: o.plate, hidden: o.hidden, aside: o.aside }));
     try { store.set(PKEY, JSON.stringify({ v: 1, plates: m.plates, current: m.current, rows })); } catch (_) { /* no storage */ }
   }
   function saveProject() {

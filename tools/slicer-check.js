@@ -428,6 +428,93 @@ async function main() {
       await c3.context.close();
     }
 
+    /* ---- cut: the tool, the parts, and the shape that is on the plate reaching the engine ---- */
+    {
+      const c4 = await open(browser, server.base, { width: 1366, height: 800 });
+      const p4 = c4.page;
+      await p4.evaluate(() => { try { localStorage.removeItem('dejavu1.slicer.project'); } catch (e) { /* none */ } });
+      await p4.reload({ waitUntil: 'domcontentloaded' });
+      await p4.waitForFunction(() => window.SL && SL.state.model && SL.state.view, null, { timeout: 25000 });
+      await p4.evaluate(async () => { await SL.openFromLibrary('3dbenchy.stl'); const m = SL.state.model; m.selected = new Set([m.objects[0].id]); SL.state.view.select([...m.selected]); SL.prepare.afterChange('select', []); });
+      await p4.waitForFunction(() => SL.state.model.onPlate().length === 1, null, { timeout: 15000 });
+      const whole = await p4.evaluate(() => ({ vol: SlicerCut.volume(SlicerModel.worldShape(SL.state.model.objects[0]).positions), id: SL.state.model.objects[0].id }));
+      await p4.click('#sl-t-cut'); await p4.waitForSelector('#sl-cut-go', { timeout: 5000 });
+      const open1 = await p4.evaluate(() => ({ tool: SL.state.tool, on: document.getElementById('sl-t-cut').getAttribute('aria-pressed'), info: document.getElementById('sl-cut-info').innerText, h: document.getElementById('sl-cut-h').value, overlay: SL.state.view.overlays.length }));
+      check(open1.tool === 'cut' && open1.on === 'true' && /top part is 24 mm thick and the bottom part 24 mm/.test(open1.info) && open1.overlay === 1, `the Cut tool opens its panel with the plane half way up: ${open1.info}`);
+      await p4.fill('#sl-cut-h', '20'); await p4.dispatchEvent('#sl-cut-h', 'input');
+      await p4.waitForFunction(() => /Cut face/.test(document.getElementById('sl-cut-info').innerText), null, { timeout: 5000 });
+      const moved = await p4.evaluate(() => document.getElementById('sl-cut-info').innerText);
+      check(/top part is 28 mm thick and the bottom part 20 mm/.test(moved) && /Cut face \d+ mm²/.test(moved), `moving the plane to 20 mm updates the parts and shows the cut face: ${moved}`);
+      if (shots) await p4.screenshot({ path: path.join(shots, 'cut-1366-light.png') });
+      await p4.fill('#sl-cut-h', '400'); await p4.dispatchEvent('#sl-cut-h', 'input');
+      check(await p4.evaluate(() => document.getElementById('sl-cut-go').disabled && /does not go through/.test(document.getElementById('sl-cut-info').innerText)), 'a plane beyond the model says so and Cut is off');
+      await p4.fill('#sl-cut-h', '20'); await p4.dispatchEvent('#sl-cut-h', 'input');
+      await p4.waitForFunction(() => !document.getElementById('sl-cut-go').disabled, null, { timeout: 5000 });
+      await p4.click('#sl-cut-go'); await p4.waitForFunction(() => SL.state.model.onPlate().length === 2, null, { timeout: 5000 });
+      const parts = await p4.evaluate(() => {
+        const m = SL.state.model, B = SlicerModel.boundsOf;
+        return { tool: SL.state.tool, objs: m.onPlate().map(o => ({ name: o.name, edited: o.edited, size: B(o).size.map(v => +v.toFixed(2)), min: B(o).min[2], vol: SlicerCut.volume(SlicerModel.worldShape(o).positions) })) };
+      });
+      const upper = parts.objs.find(o => /\(upper\)/.test(o.name)), lower = parts.objs.find(o => /\(lower\)/.test(o.name));
+      check(parts.objs.length === 2 && upper && lower && upper.edited && lower.edited && parts.tool === 'move', `Cut makes a top and a bottom part and leaves the tool: ${parts.objs.map(o => o.name).join(', ')}`);
+      check(upper && lower && Math.abs(lower.size[2] - 20) < 0.1 && Math.abs(upper.size[2] - 28) < 0.1 && Math.abs(upper.min) < 0.01 && Math.abs(lower.min) < 0.01, `the bottom part is 20 mm tall, the top part 28 mm, both on the plate: ${upper && upper.size}, ${lower && lower.size}`);
+      check(upper && lower && Math.abs(upper.vol + lower.vol - whole.vol) < whole.vol * 2e-4, `the two parts hold the whole model's volume (${whole.vol.toFixed(0)} mm³ in, ${upper && (upper.vol + lower.vol).toFixed(0)} out)`);
+      await p4.evaluate(() => SL.state.model.undo()); await p4.waitForTimeout(200);
+      check(await p4.evaluate(() => SL.state.model.onPlate().length === 1 && !SL.state.model.onPlate()[0].edited && /3dbenchy/.test(SL.state.model.onPlate()[0].name)), 'undo puts the whole model back');
+      await p4.evaluate(() => SL.state.model.redo()); await p4.waitForTimeout(200);
+      check(await p4.evaluate(() => SL.state.model.onPlate().length === 2), 'redo cuts it again');
+      // what the server holds for each part is the cut shape, not the model it came from
+      const saved = await p4.evaluate(async () => {
+        const m = SL.state.model, out = [];
+        await SL.sources.ensure(m.onPlate());
+        for (const o of m.onPlate()) {
+          const buf = await (await fetch('/api/files/raw?name=' + encodeURIComponent(o.sourceName))).arrayBuffer(), v = new DataView(buf), n = v.getUint32(80, true), pos = new Float32Array(n * 9);
+          for (let t = 0; t < n; t++) for (let k = 0; k < 9; k++) pos[t * 9 + k] = v.getFloat32(84 + t * 50 + 12 + k * 4, true);
+          out.push({ name: o.sourceName, tris: n, vol: SlicerCut.volume(pos), mine: SlicerCut.volume(o.mesh.positions) });
+        }
+        return out;
+      });
+      check(saved.length === 2 && saved.every(s => /^cut-[0-9a-f]{16}\.stl$/.test(s.name) && Math.abs(s.vol - s.mine) < Math.abs(s.mine) * 1e-5), `each part is saved to Files as its own STL with the cut shape: ${saved.map(s => s.name + ' ' + s.vol.toFixed(0)).join(', ')}`);
+      // slicing sends those files, not the benchy
+      await p4.click('#sl-slice');
+      await p4.waitForFunction(() => SL.state.slice.state === 'done' || SL.state.slice.state === 'failed', null, { timeout: 90000 });
+      const cutSlice = await p4.evaluate(async () => {
+        const s = SL.state.slice, raw = s.plateFile ? new Uint8Array(await (await fetch('/api/files/raw?name=' + encodeURIComponent(s.plateFile))).arrayBuffer()) : new Uint8Array();
+        const text = new TextDecoder('latin1').decode(raw);
+        // a file's name is in a zip twice (at the file and in the list at the end), so count the different names
+        return { state: s.state, err: s.error, cuts: new Set(text.match(/DejaVu\/Sources\/\d\/cut-[0-9a-f]{16}\.stl/g) || []).size, benchy: /Sources\/\d\/3dbenchy/.test(text) };
+      });
+      check(cutSlice.state === 'done' && cutSlice.cuts === 2 && !cutSlice.benchy, `slicing the cut plate sends the two cut files and not the model they came from: ${JSON.stringify(cutSlice)}`);
+      // the pieces come back after a reload
+      await p4.evaluate(() => Sections.choose('slicer', 'prepare'));
+      await p4.waitForFunction(() => { try { return (localStorage.getItem('dejavu1.slicer.project').match(/cut-[0-9a-f]{16}\.stl/g) || []).length === 2; } catch (e) { return false; } }, null, { timeout: 15000 });
+      await p4.reload({ waitUntil: 'domcontentloaded' });
+      await p4.waitForFunction(() => window.SL && SL.state.model && SL.state.model.onPlate().length === 2, null, { timeout: 25000 });
+      const back2 = await model(p4);
+      check(back2.length === 2 && back2.map(o => o.s[2]).sort((a, b) => a - b).every((v, i) => Math.abs(v - [20, 28][i]) < 0.1), `the two parts are still there after a reload, at their own sizes: ${back2.map(o => o.s[2])}`);
+      // the key C opens the tool, Escape leaves it
+      await p4.evaluate(() => { Sections.choose('slicer', 'prepare'); const m = SL.state.model; m.selected = new Set([m.objects[0].id]); SL.state.view.select([...m.selected]); SL.prepare.afterChange('select', []); if (document.activeElement) document.activeElement.blur(); });
+      await p4.waitForFunction(() => SL.state.page === 'prepare', null, { timeout: 5000 }).catch(() => {});
+      await p4.keyboard.press('c'); await p4.waitForTimeout(300);
+      const keyed = await p4.evaluate(() => ({ tool: SL.state.tool, page: SL.state.page, go: !!document.getElementById('sl-cut-go'), sel: SL.state.model.selected.size, focus: document.activeElement && (document.activeElement.tagName + '#' + document.activeElement.id) }));
+      check(keyed.tool === 'cut' && keyed.go, `the C key opens the Cut tool: ${JSON.stringify(keyed)}`);
+      await p4.keyboard.press('Escape'); await p4.waitForTimeout(300);
+      check(await p4.evaluate(() => SL.state.tool === 'move' && !document.getElementById('sl-cut-go') && !!document.getElementById('sl-i-x')) && keyed.tool === 'cut', 'Escape leaves it and the object numbers come back');
+      // Enter in the height box cuts, and cuts once, even after the panel was rebuilt by choosing another plane twice
+      await p4.evaluate(() => { const m = SL.state.model, o = m.objects.find(x => /lower/.test(x.name)) || m.objects[0]; m.selected = new Set([o.id]); SL.state.view.select([...m.selected]); SL.prepare.afterChange('select', []); });
+      await p4.keyboard.press('c'); await p4.waitForSelector('#sl-cut-go', { timeout: 5000 });
+      await p4.click('[data-kind="y"]'); await p4.click('[data-kind="z"]');
+      await p4.fill('#sl-cut-h', '8'); await p4.dispatchEvent('#sl-cut-h', 'input');
+      await p4.waitForFunction(() => !document.getElementById('sl-cut-go').disabled && /Cut face/.test(document.getElementById('sl-cut-info').innerText), null, { timeout: 8000 });
+      const beforeEnter = await p4.evaluate(() => SL.state.model.onPlate().length);
+      await p4.focus('#sl-cut-h'); await p4.keyboard.press('Enter'); await p4.waitForTimeout(600);
+      const afterEnter = await p4.evaluate(() => SL.state.model.onPlate().length);
+      check(beforeEnter === 2 && afterEnter === 3, `Enter in the height box cuts once (${beforeEnter} objects, then ${afterEnter})`);
+      check(await p4.evaluate(() => !/Cut is not in the Slicer yet/.test(document.body.innerText)), 'Cut is no longer listed as missing');
+      check(c4.errors.length === 0, `no script errors while cutting: ${c4.errors.slice(0, 2).join(' | ')}`);
+      await c4.context.close();
+    }
+
     /* ---- dark, and the phone ---- */
     for (const [label, size, dark] of [['1366-dark', { width: 1366, height: 800 }, true], ['390-light', { width: 390, height: 844 }, false], ['390-dark', { width: 390, height: 844 }, true]]) {
       const c = await open(browser, server.base, size, dark);

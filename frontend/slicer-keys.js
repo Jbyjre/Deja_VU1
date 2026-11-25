@@ -34,7 +34,7 @@
     { title: 'Models', rows: [
       [['A'], 'Arrange the plate'],
       [['Q'], 'Auto-orient the selection, or every model'],
-      [['M'], 'Move'], [['R'], 'Rotate'], [['S'], 'Scale'], [['F'], 'Lay a face on the plate'], [['U'], 'Measure'],
+      [['M'], 'Move'], [['R'], 'Rotate'], [['S'], 'Scale'], [['F'], 'Lay a face on the plate'], [['C'], 'Cut the selection with a plane'], [['U'], 'Measure'],
       [['Arrows'], 'Move the selection 10 mm (Shift 1 mm, Alt 0.1 mm)'],
       [[CTRL, 'Arrows'], 'Move it the way the camera sees it'],
       [['Page up', 'Page down'], 'Raise or lower the selection'],
@@ -50,6 +50,7 @@
     { title: 'Slice and print', rows: [
       [[CTRL, 'R'], 'Slice the plate'],
       [[CTRL, 'G'], 'Save the G-code'],
+      [[CTRL, 'S'], 'Save the plate as a 3MF project'],
       [[CTRL, 'Shift', 'G'], 'Print the plate']] },
     { title: 'Preview', rows: [
       [['Up', 'Down'], 'Move the layer slider'],
@@ -59,7 +60,7 @@
       [['L'], 'Show one layer, or a range'],
       [['?'], 'This list']] }
   ];
-  const NOT_BUILT = { c: 'Cut', b: 'Boolean', p: 'Seam painting', h: 'Fuzzy-skin painting', t: 'Text', e: 'Brim ears', y: 'Assemble' };
+  const NOT_BUILT = { b: 'Boolean', p: 'Seam painting', h: 'Fuzzy-skin painting', t: 'Text', e: 'Brim ears', y: 'Assemble' };
 
   const caps = keys => keys.map(k => `<kbd class="sl-kbd">${esc(k)}</kbd>`).join('<span class="sl-kplus" aria-hidden="true">+</span>');
 
