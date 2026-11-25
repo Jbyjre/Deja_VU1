@@ -1,0 +1,10 @@
+{
+  "id": "cost-calculator",
+  "name": "Print cost",
+  "version": "1.0.0",
+  "description": "Prices filament by material and adds electricity, for past prints and the one running now.",
+  "author": "Deja Vu1",
+  "permissions": ["printer.read"],
+  "module": "cost_calculator",
+  "lives": "Its card is on the Prints screen, under Print cost."
+}

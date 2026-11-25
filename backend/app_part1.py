@@ -18,6 +18,7 @@ import colour_map
 import companion_sensor
 import comparison
 import cost_calculator
+import plugins
 import desktop
 import discovery
 import engine_installer
@@ -128,6 +129,14 @@ def _live_snapshot():
 # Routes that return printer figures, gated by connection/demo, each mapped
 # to the module that owns them (checked before connection) and the function
 # that produces the data. Each gets the parsed query string.
+def _cost_read(read):
+    """The cost calculator runs as a built-in plugin: reading the printer for it needs that permission."""
+    if not plugins.granted("cost-calculator", "printer.read"):
+        raise PermissionError("Not allowed: the Print cost plugin hasn't been granted \"" +
+                              plugins.PERMISSIONS["printer.read"] + "\". You can grant it in Settings, Plugins")
+    return read()
+
+
 _DATA_ROUTES = {
     "/api/tools/compatibility": ("printer_control", lambda q: tool_setup.compatibility()),
     "/api/printer/problems": ("error_help", lambda q: logbook.problems_view()),
@@ -156,8 +165,8 @@ _DATA_ROUTES = {
     "/api/compare/side-by-side": ("compare", lambda q: comparison.side_by_side()),
     "/api/sanity": ("sanity_check", lambda q: sanity_check.check()),
     "/api/updates": ("updates", lambda q: updates.get_status()),
-    "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
-    "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.current_job()),
+    "/api/cost/history": ("cost_calculator", lambda q: {"jobs": _cost_read(cost_calculator.cost_history)}),
+    "/api/cost/current": ("cost_calculator", lambda q: _cost_read(cost_calculator.current_job)),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
     "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
     "/api/fleet": ("fleet", lambda q: _fleet_rows(_demo(q))),
@@ -208,6 +217,8 @@ _APP_ROUTES = {
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
+    "/api/plugins": (None, lambda q: plugins.listing()),
+    "/api/plugins/pane": (None, lambda q: plugins.pane(_q(q, "id"))),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,

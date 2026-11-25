@@ -187,6 +187,7 @@ function sentence(rule) {
       : t.type === 'state' ? `a print ${t.event}` : t.type === 'filament_mismatch' ? 'the loaded filament doesn\'t match' : `maintenance${t.task && t.task !== 'any' ? ` (${t.task.replace('_', ' ')})` : ''} is overdue`;
     const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"`
       : a.type === 'cool_down' ? 'turn the heaters off' : a.type === 'macro' ? `run ${a.name}`
+      : a.type === 'plugin' ? `run ${a.label || 'a plugin action'}`
       : a.type === 'ai_look' ? `have my AI look through the camera${a.pause ? ' and pause a clear failure' : ''}` : 'pause the print';
     const cond = { always: '', while_printing: ' while printing', outside_quiet_hours: ' outside quiet hours' }[rule.condition];
     return `When ${esc(when)}${cond}, ${a.type === 'light' ? then : esc(then)}${rule.printer !== 'any' ? ` on ${esc(printerName(rule.printer))}` : ''}.`;

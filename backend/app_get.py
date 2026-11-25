@@ -76,6 +76,10 @@ class GetRoutes:
             if refused:
                 body["printer_refused"] = True
             return self._send_json(body, status=409 if refused else 502)
+        except PermissionError as exc:
+            # A plugin, or a feature that runs as one, asked for something it hasn't been granted.
+            self._note_refusal(403, str(exc))
+            return self._send_json({"error": str(exc), "not_allowed": True}, status=403)
         except ValueError as exc:
             if self.path.startswith(("/api/printer/control/", "/api/fleet/broadcast")):
                 self._note_refusal(400, str(exc))

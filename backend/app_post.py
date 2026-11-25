@@ -38,6 +38,7 @@ import mock_moonraker
 import modules
 import notifications
 import pairing
+import plugins
 import photo_studio
 import memory
 import orca_import
@@ -768,6 +769,36 @@ class PostRoutes:
             device_id = route[len("/api/pairing/devices/"):-len("/unpair")]
             devices = pairing.unpair(device_id)
             return self._send_json({"devices": devices})
+
+        if route == "/api/plugins":
+            body = self._read_json_body()
+            act, pid = body.get("action"), str(body.get("id") or "")
+            if act == "on":
+                return self._send_json(plugins.set_on(pid, body.get("on") in (True, 1, "1", "true")))
+            if act == "grant":
+                return self._send_json(plugins.set_grant(pid, str(body.get("permission") or ""),
+                                                         body.get("allow") in (True, 1, "1", "true")))
+            if act == "safe_start":
+                return self._send_json(plugins.set_safe_start(body.get("on") in (True, 1, "1", "true")))
+            if act == "error":
+                return self._send_json(plugins.report_error(pid, body.get("message")))
+            if act == "approve_real":
+                return self._send_json(plugins.approve_real(pid))
+            if act == "install":
+                return self._send_json(plugins.install(body.get("files")))
+            if act == "remove":
+                return self._send_json(plugins.remove(pid))
+            raise ValueError("Pick an action: on, grant, safe_start, error, approve_real, install or remove")
+
+        if route == "/api/plugins/call":
+            body = self._read_json_body()
+            return self._send_json(plugins.call(str(body.get("id") or ""), str(body.get("method") or ""),
+                                                body.get("args"), body.get("printer")))
+
+        if route == "/api/plugins/action":
+            body = self._read_json_body()
+            return self._send_json(plugins.run_action(str(body.get("id") or ""), str(body.get("action") or ""),
+                                                      body.get("printer")))
 
         if route == "/api/cost/settings":
             if self._module_blocked("cost_calculator"):

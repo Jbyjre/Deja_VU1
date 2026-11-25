@@ -1,0 +1,26 @@
+{
+  "id": "house-rules",
+  "name": "House rules",
+  "version": "1.0.0",
+  "description": "Refuses PETG on the smooth plate, warns before a print of more than 12 hours, and shows each head's temperature.",
+  "author": "Deja Vu1 example",
+  "permissions": ["printer.read", "printer.command"],
+  "pane": { "title": "Heads at a glance", "script": "pane.js" },
+  "checks": [
+    {
+      "id": "no-petg-smooth",
+      "level": "refuse",
+      "say": "No PETG on the smooth plate: it can tear the surface. Swap to the textured plate and slice again.",
+      "when": { "material": "PETG", "bed_type_contains": "smooth" }
+    },
+    {
+      "id": "long-print",
+      "level": "warn",
+      "say": "This print runs more than 12 hours. Check the spools have enough left.",
+      "when": { "hours_over": 12 }
+    }
+  ],
+  "actions": [
+    { "id": "say-hello", "name": "Say hello on the printer's screen", "gcode": ["M117 Hello from House rules"] }
+  ]
+}

@@ -60,7 +60,7 @@ TRIGGERS = {"temperature", "state", "filament_mismatch", "maintenance_overdue", 
 SENSORS = {"chamber", "bed", "active_nozzle", "T0", "T1", "T2", "T3"}
 STATE_EVENTS = {"started", "finished", "failed", "paused", "resumed", "cancelled"}
 CONDITIONS = {"always", "while_printing", "outside_quiet_hours"}
-ACTIONS = {"notify", "light", "home_assistant", "pause", "cool_down", "macro", "ai_look"}
+ACTIONS = {"notify", "light", "home_assistant", "pause", "cool_down", "macro", "ai_look", "plugin"}
 MAX_RULES = 50
 
 _lock = threading.RLock()
@@ -208,6 +208,16 @@ def validate(rule):
         clean_action["name"] = macro
     elif atype == "ai_look":
         clean_action["pause"] = action.get("pause") in (True, "true", 1, "1")
+    elif atype == "plugin":
+        import plugins
+        found = {p["id"]: p for p in plugins.listing()["plugins"]}
+        pid, aid = str(action.get("plugin") or ""), str(action.get("action") or "")
+        if pid not in found:
+            raise ValueError("Pick one of your plugins")
+        named = next((a for a in found[pid]["actions"] if a["id"] == aid), None)
+        if named is None:
+            raise ValueError("Pick one of that plugin's actions")
+        clean_action.update(plugin=pid, action=aid, label=f"{found[pid]['name']}: {named['name']}"[:120])
 
     printer = rule.get("printer") or "any"
     if printer != "any" and not mock_moonraker.has_printer(printer):
@@ -247,7 +257,8 @@ def _describe(trigger, action):
     else:
         what = "maintenance overdue"
     doing = {"cool_down": "cool down", "macro": f"run {action.get('name', 'macro')}",
-             "ai_look": "AI checks the camera" + (" (pauses a failed print)" if action.get("pause") else "")}.get(action["type"])
+             "ai_look": "AI checks the camera" + (" (pauses a failed print)" if action.get("pause") else ""),
+             "plugin": action.get("label")}.get(action["type"])
     return f"When {what} → {doing or action['type'].replace('_', ' ')}"
 
 
@@ -563,6 +574,16 @@ def run_action(rule, printer_id, detail, manual=False):
                           + (" Paused." if seen.get("paused") else "")}
         except ValueError as exc:
             result = {"ok": False, "error": f"AI check failed: {exc}"}
+    elif kind == "plugin":
+        import plugins
+        try:
+            if demo and mock_moonraker.is_real(printer_id):
+                raise ValueError("a demo rule never acts on a real printer")
+            done = plugins.run_action(action["plugin"], action["action"], printer_id)
+            result = {"ok": True, "detail": f"{action.get('label') or done['action']}: sent to {done['printer']}"
+                      + (" (practice printer: the plugin isn't allowed the real one yet)" if done["practice"] else "")}
+        except (ValueError, PermissionError, mock_moonraker.PrinterCommandError) as exc:
+            result = {"ok": False, "error": f"Plugin action failed: {exc}"}
     else:
         result = {"ok": False, "error": f"Unknown action {kind}"}
     return _record(rule, printer_id, detail, result, manual=manual)

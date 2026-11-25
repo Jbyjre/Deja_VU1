@@ -41,6 +41,8 @@ _lock = threading.Lock()
 
 _DATA_DIR = storage.DATA_DIR
 _STATE_PATH = os.path.join(_DATA_DIR, "modules.json")
+# Features that now run as built-in plugins (backend/plugins_builtin/): their switch shows in Settings, Plugins.
+_PLUGIN_OWNED = {"cost_calculator": "cost-calculator"}
 
 # While True, Tester mode is on from the first start and cannot be switched off from Settings.
 TESTER_ALWAYS_ON = True
@@ -375,7 +377,16 @@ def _effective(module_id, state):
         forced = _tester_override()
         if forced is not None:
             return forced
-    return state.get(module_id, _BY_ID[module_id]["default_enabled"])
+    on = state.get(module_id, _BY_ID[module_id]["default_enabled"])
+    if on and module_id in _PLUGIN_OWNED:
+        import plugins                  # here: a built-in plugin owns this switch, and safe start turns it off
+        return not plugins.module_blocked(module_id)
+    return on
+
+
+def stored_enabled(module_id):
+    """The saved switch alone, without safe start: a built-in plugin's own on or off."""
+    return bool(_load_state().get(module_id, _BY_ID[module_id]["default_enabled"]))
 
 
 def get_all():
@@ -386,6 +397,8 @@ def get_all():
         row = {**module, "enabled": _effective(module["id"], state)}
         if module["id"] == "tester":
             row["kind"] = "core" if TESTER_ALWAYS_ON else "setting"          # the flag can change at run time (tests do)
+        if module["id"] in _PLUGIN_OWNED:
+            row["plugin"] = _PLUGIN_OWNED[module["id"]]                      # switched in Settings, Plugins
         rows.append(row)
     return rows
 
