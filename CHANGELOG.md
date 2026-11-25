@@ -118,6 +118,14 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.43 (25 November 2026): Print watch that follows your rules, shows its picture, and lets you choose i...
+
+- Print watch that follows your rules, shows its picture, and lets you choose its AI; a ChatGPT sign-in that says what happened
+
+## 0.20.42 (25 November 2026): Replay an ended print on the 3D twin
+
+- Replay an ended print on the 3D twin
+
 ## 0.20.41 (25 November 2026): Deja Vu1 remembers the files you printed: their history where you open them,...
 
 - Deja Vu1 remembers the files you printed: their history where you open them, Print it like the time it worked, and facts from your own prints
