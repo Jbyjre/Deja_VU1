@@ -842,6 +842,10 @@ _PLAN_LIMIT = {
     "comes back when your plan's limit resets; you can see it in ChatGPT, Settings, Usage.",
     "subscription_sharing_usage_unavailable": "Your ChatGPT plan can't be used by apps right now. Check ChatGPT, "
     "Settings, Usage, or try again later.",
+    # OpenAI's errors page: 403, plan usage is unavailable for the selected user, workspace or policy. Signing in
+    # again doesn't change it, so the words say what does.
+    "subscription_sharing_user_not_eligible": "Your ChatGPT plan, workspace or its settings don't let apps use it, so "
+    "signing in again won't help. A plan or workspace that allows it, or an OpenAI API key, works instead.",
 }
 
 
@@ -876,7 +880,8 @@ def _chatgpt_open(url, payload=None, timeout=TIMEOUT):
         raise AIError(_explain(error.code, detail, provider("chatgpt")))
     except (urllib.error.URLError, OSError, ValueError) as error:
         raise AIError(f"Couldn't reach ChatGPT: {getattr(error, 'reason', error)}. A ChatGPT plan runs on OpenAI's "
-                      "computers, so this computer needs an internet connection for it.")
+                      "computers, so this computer needs an internet connection for it; a school or work network, or a "
+                      "firewall, may block api.openai.com.")
 
 
 def _chatgpt_models():

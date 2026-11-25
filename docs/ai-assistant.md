@@ -33,6 +33,14 @@ internet for them. A model on this computer works offline, and so does the rest 
   browser ended on into the box under the button. The sign-in is refreshed before it runs out and
   revoked at OpenAI when you press Sign out. The ChatGPT desktop app itself can't be used by other
   apps, which is why this is the way in.
+  When the sign-in or your plan says no, Deja Vu1 says which case it is: plan use not ticked on
+  the approval page (press **Try again and allow plan use**), a plan, workspace or setting that
+  doesn't let apps use it (signing in again won't help; an OpenAI API key works instead), the
+  plan's allowance for apps used up (see ChatGPT, Settings, Usage), a sign-in code that ran out or
+  was already used, ChatGPT's sign-in busy, or a network that blocks auth.openai.com. When port 1455
+  is taken by another program, often another app's own ChatGPT sign-in, the sign-in comes back on
+  a free port and the screen says which. Whether a free ChatGPT plan can be used this way isn't
+  stated in OpenAI's pages and hasn't been tried here.
 - **Claude:** the Claude desktop app keeps its own sign-in that other programs can't use, so Claude
   Code signs in once by itself. Press **Sign in with Claude**: Deja Vu1 runs Claude Code's own sign-in
   (`claude auth login`), the page opens in your browser, and if the page shows a code you paste it into

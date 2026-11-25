@@ -206,20 +206,21 @@ async function openForm(id, quiet) {
     /* Signing in from here: ChatGPT through OpenAI's Sign in with ChatGPT, Claude through Claude Code's own sign-in. */
     function signHTML(q) {
       if (q.kind === 'account') {
-        if (q.signed_in && !q.plan_use) return '<p class="ai-step-help">You signed in, but plan use wasn’t allowed. Press Continue with ChatGPT and allow it on the page that opens.</p>' + signButtons(q);
+        if (q.signed_in && !q.plan_use) return '<p class="ai-step-help">You signed in, but plan use wasn’t allowed. Press Try again and allow plan use, and allow it on the page that opens.</p>' + signButtons(q);
         return signButtons(q);
       }
       return `<p class="ai-step-help">Claude Code is on this computer${q.version ? ` (${esc(q.version)})` : ''} but isn’t signed in yet. The Claude desktop app keeps its own sign-in, so Claude Code signs in once by itself: press Sign in and approve it in your browser.</p>${signButtons(q)}`;
     }
     function signButtons(q) {
       const waiting = signing && signing.running;
-      const label = q.kind === 'account' ? 'Continue with ChatGPT' : 'Sign in with Claude';
+      const label = q.kind !== 'account' ? 'Sign in with Claude' : q.signed_in && !q.plan_use ? 'Try again and allow plan use' : 'Continue with ChatGPT';
       return `<div class="ai-sign">
         <div class="ai-actions"><button class="btn primary" id="ai-sign" type="button">${waiting ? 'Open the sign-in page again' : label}</button>
           ${q.kind === 'cli' && !waiting ? '<button class="btn" id="ai-probe" type="button">I’m already signed in</button>' : ''}</div>
         ${waiting ? `<p class="ai-hint">${q.kind === 'account' ? 'Approve Deja Vu1 in the ChatGPT page that opened. This screen updates by itself.' : 'Approve it in the page that opened. If the page shows a code, paste it here.'}</p>
+          ${q.kind === 'account' && signing.port_busy ? `<p class="ai-hint">Port 1455 is in use by another program on this computer, often another app’s ChatGPT sign-in, so this sign-in comes back on port ${+signing.port}.</p>` : ''}
           <label class="ai-field"><span>${q.kind === 'account' ? 'On another device? Paste the address the browser ended on' : 'Code from the sign-in page'}</span>
-            <span class="ai-paste"><input id="ai-paste" type="text" autocomplete="off" spellcheck="false" placeholder="${q.kind === 'account' ? 'http://127.0.0.1:1455/auth/callback?code=…' : 'Paste the code'}"><button class="btn" id="ai-paste-go" type="button">Finish</button></span></label>` : ''}
+            <span class="ai-paste"><input id="ai-paste" type="text" autocomplete="off" spellcheck="false" placeholder="${q.kind === 'account' ? `http://127.0.0.1:${+(signing.port || 1455)}/auth/callback?code=…` : 'Paste the code'}"><button class="btn" id="ai-paste-go" type="button">Finish</button></span></label>` : ''}
       </div>`;
     }
     const say = (text, kind) => { const s = slot.querySelector('#ai-status'); if (s) { s.textContent = text; s.dataset.kind = kind || ''; } };
@@ -263,7 +264,7 @@ async function openForm(id, quiet) {
         const out = await signin('start');
         sign.disabled = false;
         if (!out) { if (tab) tab.close(); return; }
-        signing = { url: out.url || '', running: true };
+        signing = { url: out.url || '', running: true, port: out.port, port_busy: !!out.port_busy };
         if (account && out.url) { if (tab) tab.location.href = out.url; else window.open(out.url, '_blank', 'noopener'); }
         draw();
         say(account ? 'Waiting for you to approve it in ChatGPT…' : out.url ? 'Waiting for you to approve it in the browser…' : 'Claude Code is opening the sign-in page…');

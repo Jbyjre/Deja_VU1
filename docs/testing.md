@@ -193,7 +193,9 @@ AI assistant, which also ran through a paid API key.
   in Files, and the readings came back as a card; a saved conversation reopened after a server restart;
   disconnecting removed every AI shortcut (10 to 0). Sign in with ChatGPT ran against a stand-in for
   OpenAI's sign-in and Responses API in the suite (registration, PKCE, the ID token's signature,
-  refresh, sign-out, the plan's usage-limit error). Claude
+  refresh, sign-out, the plan's usage-limit error; from 25 November each refusal case in its own words:
+  plan use not granted, a plan that can't be shared, the usage limit, six sign-in page refusals, a used
+  sign-in code and a busy port 1455). Claude
   Code's sign-in ran against a stand-in `claude` program. The stock U1 slicer settings were chosen from
   Snapmaker's own preset list (version 02.03.03.03, in `tests/fixtures`) and saved as a profile against
   stand-in preset files, with a stand-in engine for the test slice. Listing and keeping the printer's

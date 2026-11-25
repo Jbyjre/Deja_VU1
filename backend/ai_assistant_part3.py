@@ -664,8 +664,8 @@ TOOLS = {
     "automation_toggle": _tool("safe", "Switch an automation rule on or off.", "rule_id, enabled true|false", _automation_toggle),
     "automation_remove": _tool("safe", "Delete an automation rule.", "rule_id",
                                lambda rule_id: {"rules": automations.delete_rule(str(rule_id))}),
-    "print_watch": _tool("safe", "Change print watch.", "on, minutes 2-60, first_layer, last_layers, compare, confirm, "
-                         "picture (on alerts), "
+    "print_watch": _tool("safe", "Print watch.", "on, minutes 2-60, first_layer, last_layers, compare, confirm, "
+                         "picture, "
                          "looks [" + ",".join(WATCH_LOOKS) + "], sensitivity relaxed|normal|careful, notes, policy "
                          "{cosmetic|fixable|failing|crash: note|notify|pause|decide}", _print_watch),
     "file_delete": _tool("ask", "Delete a file from the library.", "name", _file_delete),
