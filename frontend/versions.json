@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.45",
+      "date": "2026-11-25",
+      "name": "Search and sort your files, and see when a model may be drawn in inches",
+      "published": true,
+      "summary": "Search and sort your files, and see when a model may be drawn in inches.",
+      "changes": [
+        "Search and sort your files, and see when a model may be drawn in inches"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.44",
       "date": "2026-11-25",
       "name": "Plugins: add your own house rules, buttons and panes, each allowed only what...",
