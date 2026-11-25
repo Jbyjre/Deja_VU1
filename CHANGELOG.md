@@ -128,6 +128,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.47 (25 November 2026): Show the version history and update messages in your own language
+
+- Show the version history and update messages in your own language
+
 ## 0.20.46 (25 November 2026): See how well each head's loaded spool fits a colour before you print
 
 - See how well each head's loaded spool fits a colour before you print

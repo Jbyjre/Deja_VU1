@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.47",
+      "date": "2026-11-25",
+      "name": "Show the version history and update messages in your own language",
+      "published": true,
+      "summary": "Show the version history and update messages in your own language.",
+      "changes": [
+        "Show the version history and update messages in your own language"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.46",
       "date": "2026-11-25",
       "name": "See how well each head's loaded spool fits a colour before you print",
