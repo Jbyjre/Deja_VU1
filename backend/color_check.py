@@ -347,7 +347,8 @@ def check_current_job():
     """
     job = get_current_job_requirements()
     if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
-        sensors = companion_sensor.status()["sensors"]
+        listing = companion_sensor.status()
+        sensors = listing["sensors"]
         return {
             "simulated": False,
             "hardware_connected": any(s["age_s"] is not None and s["age_s"] < companion_sensor.MAX_AGE_S
@@ -359,6 +360,7 @@ def check_current_job():
             "overall": "sensor_readings" if sensors else "no_sensor",
             "checks": [],
             "sensors": sensors,
+            "unassigned": listing["unassigned"],
         }
     results = []
 

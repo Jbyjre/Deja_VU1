@@ -13,7 +13,8 @@ comes out of a run through the app says the chain works. It says nothing about h
 Command line: reads lines from standard input and writes the firmware's lines to standard output. The Wi-Fi
 settings come from the environment as the real board reads them from settings.toml: CIRCUITPY_WIFI_SSID (it joins a
 made-up network called "HomeNet" with the password "correct-horse"), CIRCUITPY_WIFI_PASSWORD, DV1_SERVER (the app's
-address, which the stand-in reaches over a real socket), DV1_PRINTER and DV1_PAIR_CODE.
+address, which the stand-in reaches over a real socket), DV1_PRINTER and DV1_PAIR_CODE. DV1_SIM_UID (16 hex digits)
+gives the stand-in its own board id, and DV1_SIM_PERIOD the seconds between readings (0.6).
     SIM {"spool": "white"}      put a synthetic spool in front of the sensor (see SPOOLS; "none" is an empty housing)
     SIM {"unplug": true}        the sensor stops answering, as when its wire comes loose
     SIM {"wifi": false}         the router goes away (true brings it back)
@@ -313,7 +314,7 @@ class Rig:
 
 
 def command_line():
-    rig = Rig(real_time=True, spool="none")
+    rig = Rig(real_time=True, spool="none", uid=bytes.fromhex(os.environ.get("DV1_SIM_UID", "deadbeef00000001")))
     rig.firmware.PERIOD_S = float(os.environ.get("DV1_SIM_PERIOD", "0.6"))
     lock = threading.Lock()
 

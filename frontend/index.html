@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="assistant.css">
 <link rel="stylesheet" href="tester.css">
 <link rel="stylesheet" href="errorhelp.css">
+<link rel="stylesheet" href="colour-setup.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="theme-screens.css">
 <link rel="stylesheet" href="theme-shell.css">
@@ -1091,6 +1092,9 @@
             <div><h2>Right colour loaded?</h2><p class="card-sub">Optical check before the print starts</p></div>
             <span class="badge badge-sim" id="colour-sensor-state">Hardware pending</span>
           </div>
+          <div class="card-actions colour-setup-bar" id="colour-setup-bar" hidden>
+            <button class="btn small" type="button" id="colour-setup-open">Set up the colour checker</button>
+          </div>
           <div id="colorfile" class="colorfile" hidden></div>
           <div id="colors" class="colors">
             <div class="empty">
@@ -1764,6 +1768,15 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
   </div>
 </dialog>
 
+<dialog class="glass-dialog colour-setup" id="colour-setup" aria-labelledby="colour-setup-title">
+  <div class="dialog-panel liquid-glass deep">
+    <div class="card-head">
+      <div><h2 id="colour-setup-title">Set up the colour checker</h2><p class="card-sub">A Pico W with a colour sensor, sending readings over Wi-Fi or USB</p></div>
+      <button type="button" class="btn" id="colour-setup-close">Close</button>
+    </div>
+    <div id="colour-setup-body"></div>
+  </div>
+</dialog>
 <dialog class="glass-dialog" id="diff-dialog" aria-labelledby="diff-title">
   <div class="dialog-panel liquid-glass deep wide">
     <div class="card-head">
@@ -1905,6 +1918,8 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="printer-page.js"></script>
 <script src="camera-window.js"></script>
 <script src="printer-extras.js"></script>
+<script src="colour-bridge.js"></script>
+<script src="colour-setup.js"></script>
 <script src="logbook.js"></script>
 <script src="errorhelp.js"></script>
 <script src="insights.js"></script>
