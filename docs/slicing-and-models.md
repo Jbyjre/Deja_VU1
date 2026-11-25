@@ -35,13 +35,12 @@ saved by the Slicer comes back with its objects where they were.
   cut face is. Cut makes each kept part an object of its own, closes the cut face
   with a flat surface (also round a hollow inside the model) and selects the
   parts; Ctrl+Z puts the whole model back. A plane that misses the model says so
-  and Cut stays off. Each part is saved to Files as `cut-<code>.stl` a moment
-  after the cut, and always before the plate is sliced or saved, so the engine
-  slices the parts you see. Colours painted in a 3MF are not kept in the parts
-  (an STL has none); each part prints with one head. Split into parts works the
-  same way.
-  Not in yet: pins and sockets to join the parts again, and dragging the plane in
-  the 3D view.
+  and Cut stays off. Deja Vu1 saves each part to Files as `cut-<code>.stl` a moment
+  after the cut, and again before it slices or saves the plate, so the engine
+  slices the parts you see. Cut parts lose the colours painted in a 3MF (an STL
+  holds none); each part prints with one head. Split into parts works the same
+  way. Not built yet: pins and sockets to join the parts again, and dragging the
+  plane in the 3D view.
 - **Save project.** The download button beside Slice plate (or Ctrl+S) saves the
   plate as a 3MF: every model where it stands, with its head and its own settings.
   Adding that file to the Slicer puts the plate back.

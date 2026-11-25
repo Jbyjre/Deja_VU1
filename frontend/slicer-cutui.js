@@ -184,7 +184,10 @@
     on(q('#sl-cut-go', box), 'click', apply);
     on(q('#sl-cut-no', box), 'click', cancel);
     on(q('#sl-cut-x', box), 'click', cancel);
+    if (box.dataset.cutKeys) return;               // the panel is rebuilt in the same box: its key handler is added once
+    box.dataset.cutKeys = '1';
     on(box, 'keydown', e => {
+      if (!cs || state.tool !== 'cut') return;
       if (e.key === 'Enter' && e.target.matches('input[type="number"]')) { e.preventDefault(); apply(); }
       else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); }
     });

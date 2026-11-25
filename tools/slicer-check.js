@@ -499,6 +499,16 @@ async function main() {
       check(keyed.tool === 'cut' && keyed.go, `the C key opens the Cut tool: ${JSON.stringify(keyed)}`);
       await p4.keyboard.press('Escape'); await p4.waitForTimeout(300);
       check(await p4.evaluate(() => SL.state.tool === 'move' && !document.getElementById('sl-cut-go') && !!document.getElementById('sl-i-x')) && keyed.tool === 'cut', 'Escape leaves it and the object numbers come back');
+      // Enter in the height box cuts, and cuts once, even after the panel was rebuilt by choosing another plane twice
+      await p4.evaluate(() => { const m = SL.state.model, o = m.objects.find(x => /lower/.test(x.name)) || m.objects[0]; m.selected = new Set([o.id]); SL.state.view.select([...m.selected]); SL.prepare.afterChange('select', []); });
+      await p4.keyboard.press('c'); await p4.waitForSelector('#sl-cut-go', { timeout: 5000 });
+      await p4.click('[data-kind="y"]'); await p4.click('[data-kind="z"]');
+      await p4.fill('#sl-cut-h', '8'); await p4.dispatchEvent('#sl-cut-h', 'input');
+      await p4.waitForFunction(() => !document.getElementById('sl-cut-go').disabled && /Cut face/.test(document.getElementById('sl-cut-info').innerText), null, { timeout: 8000 });
+      const beforeEnter = await p4.evaluate(() => SL.state.model.onPlate().length);
+      await p4.focus('#sl-cut-h'); await p4.keyboard.press('Enter'); await p4.waitForTimeout(600);
+      const afterEnter = await p4.evaluate(() => SL.state.model.onPlate().length);
+      check(beforeEnter === 2 && afterEnter === 3, `Enter in the height box cuts once (${beforeEnter} objects, then ${afterEnter})`);
       check(await p4.evaluate(() => !/Cut is not in the Slicer yet/.test(document.body.innerText)), 'Cut is no longer listed as missing');
       check(c4.errors.length === 0, `no script errors while cutting: ${c4.errors.slice(0, 2).join(' | ')}`);
       await c4.context.close();
