@@ -793,7 +793,9 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
 
     def _note_page(self):
         """Any request but the launcher's own checks means a page is open (idle_stop.py). Not a security check."""
-        if not self.headers.get("User-Agent", "").startswith("Python-urllib"):
+        # The launcher's own checks and a colour checker's readings (firmware, "DejaVu1-sensor/...") are not a page:
+        # a sensor that stays powered must not keep the app running after the last page closed.
+        if not self.headers.get("User-Agent", "").startswith(("Python-urllib", "DejaVu1-sensor/")):
             idle_stop.page_seen()
 
     def do_GET(self):

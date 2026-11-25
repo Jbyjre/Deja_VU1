@@ -10,9 +10,13 @@ What the model is built from: the shape of the board's own white LEDs comes from
 else is an assumption: the spools' spectra, the housing's brightness, the stray light and the noise. A colour that
 comes out of a run through the app says the chain works. It says nothing about how close a real sensor gets.
 
-Command line: reads lines from standard input and writes the firmware's lines to standard output.
+Command line: reads lines from standard input and writes the firmware's lines to standard output. The Wi-Fi
+settings come from the environment as the real board reads them from settings.toml: CIRCUITPY_WIFI_SSID (it joins a
+made-up network called "HomeNet" with the password "correct-horse"), CIRCUITPY_WIFI_PASSWORD, DV1_SERVER (the app's
+address, which the stand-in reaches over a real socket), DV1_PRINTER and DV1_PAIR_CODE.
     SIM {"spool": "white"}      put a synthetic spool in front of the sensor (see SPOOLS; "none" is an empty housing)
     SIM {"unplug": true}        the sensor stops answering, as when its wire comes loose
+    SIM {"wifi": false}         the router goes away (true brings it back)
     DV1 {...}                   goes to the firmware as a command
 """
 
@@ -20,6 +24,7 @@ import importlib.util
 import json
 import os
 import random
+import socket
 import sys
 import threading
 import time
@@ -50,19 +55,33 @@ SPOOLS = {
 
 
 class Clock:
-    """Time that moves only when the firmware sleeps or the sensor integrates, so tests do not wait."""
+    """Time that moves only when the firmware sleeps or the sensor integrates, so tests do not wait.
 
-    def __init__(self, scale=0.0):
+    With real=True it follows the computer's clock instead (the command line, where a server in another process
+    judges the time stamps) and the sensor only pauses briefly.
+    """
+
+    def __init__(self, real=False):
+        self.real = real
         self.now = 1000.0
-        self.scale = scale  # command-line mode sleeps a fraction of every second so a browser sees readings
 
     def monotonic(self):
-        return self.now
+        return time.monotonic() if self.real else self.now
+
+    def monotonic_ns(self):
+        return int(self.monotonic() * 1e9)
+
+    def advance(self, seconds):
+        if self.real:
+            time.sleep(0.03)
+        else:
+            self.now += seconds
 
     def sleep(self, seconds):
-        self.now += seconds
-        if self.scale:
-            time.sleep(seconds * self.scale)
+        if self.real:
+            time.sleep(seconds)
+        else:
+            self.now += seconds
 
 
 class SimSensor:
@@ -113,7 +132,7 @@ class SimSensor:
         rig = self.rig
         if rig.unplugged:
             raise OSError(19, "No such device")
-        rig.clock.now += (self.atime + 1) * (self.astep + 1) * 2.78e-6 + 0.03
+        rig.clock.advance((self.atime + 1) * (self.astep + 1) * 2.78e-6 + 0.03)
         bands, clear, nir = self._counts()
         part = bands[0:4] if low else bands[4:8]
         scale = self._full_scale()
@@ -151,9 +170,12 @@ class SimSensor:
 class Rig:
     """The firmware loaded against stand-in modules, plus the things a test or the command line changes."""
 
-    def __init__(self, scale=0.0, spool="white", sensor_present=True, wiring_ok=True, private_names=True,
-                 nvm=True, uid=bytes.fromhex("deadbeef00000001")):
-        self.clock = Clock(scale)
+    def __init__(self, real_time=False, spool="white", sensor_present=True, wiring_ok=True, private_names=True,
+                 nvm=True, uid=bytes.fromhex("deadbeef00000001"), network=None):
+        self.clock = Clock(real_time)
+        self.network = network if network is not None else {"ssid": "HomeNet", "password": "correct-horse"}
+        self.wifi_up = True  # False imitates the router going away
+        self.led_log = []  # every value the board's LED was given, in order
         self.spool = spool
         self.drift = 0.0
         self.unplugged = False
@@ -194,6 +216,55 @@ class Rig:
         for code, name in enumerate(("0_5", "1", "2", "4", "8", "16", "32", "64", "128", "256", "512")):
             setattr(Gain, "GAIN_%sX" % name, code)
 
+        class Radio:
+            def __init__(self):
+                self._joined = False
+                self.enabled = True
+                self.ipv4_address = "192.168.1.50"
+                self.ap_info = types.SimpleNamespace(rssi=-58)
+                self.attempts = []
+
+            @property
+            def connected(self):
+                return self._joined and rig.wifi_up
+
+            def connect(self, ssid, password=b"", *, channel=0, bssid=None, timeout=None, network=None):
+                self.attempts.append((ssid, password))
+                net = rig.network
+                if not rig.wifi_up or ssid != net["ssid"] or password != net["password"]:
+                    raise ConnectionError("No network with that name and password")
+                self._joined = True
+
+        radio = Radio()
+        self.radio = radio
+
+        class SocketPool:
+            AF_INET = socket.AF_INET
+            SOCK_STREAM = socket.SOCK_STREAM
+
+            def __init__(self, used):
+                pass
+
+            def socket(self, family=socket.AF_INET, kind=socket.SOCK_STREAM, proto=0):
+                return socket.socket(family, kind)
+
+            def getaddrinfo(self, host, port, family=0, kind=0, proto=0, flags=0):
+                return socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)[0]
+
+        class DigitalInOut:
+            def __init__(self, pin):
+                self.direction = None
+                self._value = False
+
+            @property
+            def value(self):
+                return self._value
+
+            @value.setter
+            def value(self, value):
+                self._value = bool(value)
+                rig.led_log.append(self._value)
+
         class Stdin:
             def read(self, count):
                 taken, rig.typed = rig.typed[:count], rig.typed[count:]
@@ -205,7 +276,11 @@ class Rig:
                 return len(rig.typed)
 
         modules = {
-            "board": types.SimpleNamespace(GP4="GP4", GP5="GP5"),
+            "board": types.SimpleNamespace(GP4="GP4", GP5="GP5", LED="LED"),
+            "wifi": types.SimpleNamespace(radio=radio),
+            "socketpool": types.SimpleNamespace(SocketPool=SocketPool),
+            "digitalio": types.SimpleNamespace(DigitalInOut=DigitalInOut,
+                                               Direction=types.SimpleNamespace(OUTPUT="output")),
             "busio": types.SimpleNamespace(I2C=I2C),
             "microcontroller": types.SimpleNamespace(cpu=types.SimpleNamespace(uid=self.uid), nvm=self.nvm),
             "supervisor": types.SimpleNamespace(runtime=Runtime()),
@@ -238,7 +313,8 @@ class Rig:
 
 
 def command_line():
-    rig = Rig(scale=0.25, spool="none")
+    rig = Rig(real_time=True, spool="none")
+    rig.firmware.PERIOD_S = float(os.environ.get("DV1_SIM_PERIOD", "0.6"))
     lock = threading.Lock()
 
     def feed():
@@ -253,6 +329,8 @@ def command_line():
                         rig.unplugged = bool(body["unplug"])
                     if "drift" in body:
                         rig.drift = float(body["drift"])
+                    if "wifi" in body:
+                        rig.wifi_up = bool(body["wifi"])
                 elif raw.startswith("DV1 "):
                     rig.type(raw)
 
