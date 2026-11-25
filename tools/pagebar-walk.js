@@ -374,7 +374,7 @@ async function walk(browser, server, shots) {
   await go(page, 'settings');
   const set = await page.evaluate(() => ({ groups: [...document.querySelectorAll('.set-groups button')].map(b => b.textContent.trim()),
     demoSwitchShown: !!document.querySelector('label[for=demo-toggle]').offsetParent }));
-  check(set.groups.length === 8 && set.groups[0] === 'Printers & connection' && set.groups.includes('Advanced') && !set.demoSwitchShown, 'Settings lists its groups and no demo switch sits in the toolbar: ' + JSON.stringify(set));
+  check(set.groups.length === 9 && set.groups[0] === 'Printers & connection' && set.groups.includes('Plugins') && set.groups.includes('Advanced') && !set.demoSwitchShown, 'Settings lists its groups and no demo switch sits in the toolbar: ' + JSON.stringify(set));
   await page.fill('#set-search', 'demo');
   await page.waitForTimeout(400);
   const found = await page.evaluate(() => [...document.querySelectorAll('#set-body > :not(.sec-off):not(.set-miss)')].map(c => c.id || c.className.slice(0, 20)));
