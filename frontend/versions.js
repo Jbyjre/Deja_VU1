@@ -93,7 +93,7 @@ window.Versions = (() => {
         <p class="vh-sum">${esc(h.summary)}</p>
         <div class="vh-foot">
           <details class="vh-more"><summary>What changed · ${h.changes.length}</summary><ul>${h.changes.map(c => `<li>${esc(c)}</li>`).join('')}</ul></details>
-          ${h.highlights && h.highlights.length ? `<button type="button" class="btn small" data-vtour="${esc(h.version)}">Tour v${esc(h.version)}</button>` : ''}
+          ${h.highlights && h.highlights.length ? `<button type="button" class="btn small" data-vtour="${esc(h.version)}">${esc(I18n.t('Tour v{version}', { version: h.version }))}</button>` : ''}
         </div></li>`);
     });
     paint($('version-history'), items.join(''));
@@ -252,10 +252,20 @@ window.Versions = (() => {
     if (job.step === 'download' && job.total) {
       pct = Math.min(100, Math.round((job.done || 0) / job.total * 100));
       const mb = n => (n / 1048576).toFixed(1);
-      words = `Downloading version ${job.version || ''}: ${mb(job.done || 0)} of ${mb(job.total)} MB (${pct}%)`.replace('version :', 'the update:');
+      const done = mb(job.done || 0), total = mb(job.total);
+      words = job.version
+        ? I18n.t('Downloading version {version}: {done} of {total} MB ({pct}%)', { version: job.version, done, total, pct })
+        : I18n.t('Downloading the update: {done} of {total} MB ({pct}%)', { done, total, pct });
     } else if (job.state === 'restarting') {
-      pct = 100; words = `Restarting into version ${job.version || 'the new version'}. This page reloads by itself. A print keeps going on the printer.`
-        + (job.slices_stopped ? ` ${job.slices_stopped === 1 ? 'A slice' : `${job.slices_stopped} slices`} still running was stopped: slice again after the restart.` : '');
+      pct = 100;
+      words = job.version
+        ? I18n.t('Restarting into version {version}. This page reloads by itself. A print keeps going on the printer.', { version: job.version })
+        : I18n.t('Restarting into the new version. This page reloads by itself. A print keeps going on the printer.');
+      if (job.slices_stopped) {
+        words += ' ' + (job.slices_stopped === 1
+          ? I18n.t('One slice still running was stopped: slice again after the restart.')
+          : I18n.t('{count} slices still running were stopped: slice again after the restart.', { count: job.slices_stopped }));
+      }
     }
     bar.classList.toggle('is-unknown', pct === null);
     bar.style.setProperty('--done', `${pct === null ? 30 : Math.max(4, pct)}%`);
@@ -422,7 +432,9 @@ window.Versions = (() => {
       box.hidden = false;
       $('app-update-bar').classList.add('is-unknown');
       $('app-update-step').textContent = secs < 60
-        ? `Restarting${version ? ` into version ${version}` : ''}: ${secs} s. This page reloads by itself.`
+        ? (version
+          ? I18n.t('Restarting into version {version}: {secs} s. This page reloads by itself.', { version, secs })
+          : I18n.t('Restarting: {secs} s. This page reloads by itself.', { secs }))
         : `This is taking longer than usual (${secs} s). Deja Vu1 starts again by itself if it stopped. If nothing changes, paste the Start and check command below: it says what is wrong.`;
       if (secs >= 60) { $('vc-fix').open = true; }
       waitForRestart(version, tries + 1, started, before);
