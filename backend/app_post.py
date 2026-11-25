@@ -86,6 +86,11 @@ class PostRoutes:
             action = companion_sensor.configure if route.endswith("/sensors") else companion_sensor.ingest
             return self._send_json(action(body))
 
+        if route == "/api/colorcheck/command":
+            if self._module_blocked("color_check"):
+                return None
+            return self._send_json(companion_sensor.queue_command(self._read_json_body()))
+
         if route == "/api/colorcheck/calibration":
             if self._module_blocked("color_check"):
                 return None

@@ -87,6 +87,8 @@ API endpoints
   POST /api/colorcheck/sensors       version 1 physical sensor assignments, per printer
   POST /api/colorcheck/readings      one version 1 companion observation
   POST /api/colorcheck/calibration   {"toolhead", "step": "white"|"dark"|"clear"} record or forget a reference
+  POST /api/colorcheck/command       {"toolhead", "cmd": "set"|"autogain"|"new_sensor", ...} queued for the sensor's next reply
+  GET  /api/colorcheck/connection    this computer's network addresses and the printer id, for setting up a Wi-Fi sensor
   GET  /api/colorcheck/overrides     prints started against the colour sensor's reading, newest first
   GET  /api/printer                  raw mock printer state
   GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints

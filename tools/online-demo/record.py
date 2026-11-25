@@ -55,7 +55,9 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 # Tester mode is off in the demo: its card shows labelled sample figures and a sample report page instead.
                 "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study",
                 # A plugin's pane: the demo holds only the built-in Print cost plugin, which has no pane.
-                "/api/plugins/pane"}
+                "/api/plugins/pane",
+                # This computer's network addresses, for setting up a Wi-Fi colour checker: never published.
+                "/api/colorcheck/connection"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
             "/api/colours/plan": "name", "/api/print/preview": "file", "/api/prints/recall": "file",
