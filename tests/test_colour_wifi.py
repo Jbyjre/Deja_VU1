@@ -202,6 +202,19 @@ class Trouble(WifiCase):
         self.assertIn("firewall", link.message)
         self.assertEqual(self.blinks(), 2)
 
+    def test_after_a_failed_try_the_app_is_left_alone_for_a_few_seconds_so_the_readings_keep_their_pace(self):
+        rig = self.pico(env={"DV1_SERVER": "127.0.0.1:1"})
+        link = rig.checker.link
+        with mock.patch.object(link, "_call", wraps=link._call) as call:
+            self.step()
+            first = call.call_count
+            self.assertGreater(first, 0)
+            self.step()  # two fake seconds later: inside the hold
+            self.assertEqual(call.call_count, first)
+            rig.clock.now += 11
+            self.step()
+            self.assertGreater(call.call_count, first)
+
     def test_several_addresses_are_tried_in_order_and_the_one_that_works_is_kept(self):
         rig = self.pico(env={"DV1_SERVER": "127.0.0.1:1, localhost:%d" % self.server.server_port})
         self.assign()
@@ -385,6 +398,30 @@ class Pairing(unittest.TestCase):
         self.assertEqual(calls[-1][2], "KEY123")
         self.assertEqual(self.link.state, "ok")
         self.assertEqual(self.rig.firmware.load_net_block()["token"], "KEY123")
+
+    def test_pairing_happens_at_the_first_call_the_time_request_when_the_clock_is_not_known_yet(self):
+        self.link.offset = None
+        calls = []
+
+        def request(method, path, body=None, cookie=True):
+            calls.append((method, path.split("?")[0], self.link.net["token"]))
+            if path.startswith("/api/pairing/redeem"):
+                return 200, {"set-cookie": "dv_device=KEY123; Path=/; HttpOnly"}, {"id": "device-1"}
+            if not self.link.net["token"]:
+                return 401, {}, {"error": "paired devices only", "pairing_required": True}
+            if method == "GET":
+                return 200, {}, {"server_time": 1900000000, "sensors": []}
+            return 200, {}, {"accepted": True, "server_time": 1900000000, "commands": []}
+
+        with mock.patch.object(self.link, "request", side_effect=request), \
+                mock.patch.object(self.link, "join", return_value=True):
+            message = {k: "x" for k in ("device_id", "channel_id", "sensor_id", "sensor_model")}
+            message.update(raw={}, quality_flags=[], settings={})
+            self.assertEqual(self.link.send(message), [])
+        self.assertEqual([(c[0], c[1]) for c in calls], [("GET", "/api/colorcheck/sensors"), ("POST", "/api/pairing/redeem"),
+                                                         ("GET", "/api/colorcheck/sensors"), ("POST", "/api/colorcheck/readings")])
+        self.assertEqual([c[2] for c in calls], ["", "", "KEY123", "KEY123"])
+        self.assertEqual(self.link.state, "ok")
 
     def test_a_code_that_does_not_work_is_not_tried_again_and_the_lock_is_explained(self):
         def request(method, path, body=None, cookie=True):

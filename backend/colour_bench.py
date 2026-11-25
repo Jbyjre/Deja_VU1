@@ -360,7 +360,8 @@ def render(result):
     if result["near_pairs"]:
         out += ["## Near shades", "", "| Pair | Labels apart | Readings apart | Told apart |", "|---|---|---|---|"]
         for pair in result["near_pairs"]:
-            out.append(f"| {pair['a']} and {pair['b']} | {pair['labels_apart']} | {pair['measured_apart']} | {'yes' if pair['told_apart'] else 'no'} |")
+            told = "yes" if pair["told_apart"] else "no"
+            out.append(f"| {pair['a']} and {pair['b']} | {pair['labels_apart']} | {pair['measured_apart']} | {told} |")
         out.append("")
     labels = result["confusion"]["labels"]
     if labels and len(labels) <= 20:

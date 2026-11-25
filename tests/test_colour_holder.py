@@ -180,7 +180,7 @@ class TestTheLidAndTheCradle(unittest.TestCase):
         self.assertLessEqual(y1 - y0, 51.0 - 14.0 + 3.5)                                  # the last 14 mm of the board overhangs
         self.assertTrue(x1 - x0 >= 21.0)
 
-    def test_the_cradle_asks_for_nothing_the_pico_datasheet_does_not_give(self):
+    def test_the_cradle_is_built_from_the_pico_sizes_the_tool_names(self):
         with open(os.path.join(ROOT, "tools", "colour-holder.py"), encoding="utf-8") as handle:
             source = handle.read()
         for fact in ("17.78", "14.0", "51.0", "21.0"):

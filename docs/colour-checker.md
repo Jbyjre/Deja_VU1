@@ -61,7 +61,7 @@ DV1_SERVER = "192.168.1.23:8000"
 DV1_PRINTER = "<printer id from the window>"
 ```
 
-`DV1_SERVER` takes more than one address, separated by commas. The Pico tries them in turn and keeps the one that works. Settings the app sent over USB win over `settings.toml`, key by key. Press **Forget the Wi-Fi saved on the Pico** in the USB cable panel to erase them and fall back to `settings.toml`. `settings.toml` is plain text on the `CIRCUITPY` drive, so anyone who holds the Pico can read the password.
+`DV1_SERVER` takes more than one address, separated by commas. The Pico tries them in turn and keeps the one that works. The window also offers this computer's `name.local` as a spare. CircuitPython documents `.local` lookups through `getaddrinfo`, but nobody has tried it on a Pico W with a Windows computer here, so treat the numeric address as the reliable one. Settings the app sent over USB win over `settings.toml`, key by key. Press **Forget the Wi-Fi saved on the Pico** in the USB cable panel to erase them and fall back to `settings.toml`. `settings.toml` is plain text on the `CIRCUITPY` drive, so anyone who holds the Pico can read the password.
 
 Your router can give this computer a new address after a restart. When readings stop one day, make the file again, or tell your router to always give this computer the same address.
 
@@ -94,7 +94,7 @@ A reference belongs to the sensor settings it was recorded at. When the gain or 
 
 Suggested starting settings, not yet tried: print the block with the pocket facing up, in black PLA or PETG, 0.2 mm layers and 3 walls. Look at the preview for the cable slot, the longest bridge at 10 mm, and add support there if it sags. Close the seam around the lid with black tape.
 
-**Measure your board before you print the block.** The makers' documents give the board's size (30.5 × 23 mm) and the Pico's size and pin spacing. They do not give where the chip sits on the sensor board, how thick the board is or how tall its socket is. The defaults come from a product picture and are estimates. Measure with a ruler or calipers and pass the numbers in:
+**Measure your board before you print the block.** The makers' documents give the board's size (30.5 × 23 mm), the Pico's size and its antenna keep-out. They do not give where the chip sits on the sensor board, how thick the board is or how tall its socket is. The defaults come from a product picture and are estimates. Measure with a ruler or calipers and pass the numbers in:
 
 ```bash
 python3 tools/colour-holder.py --out holder --chip-x 15.6 --board-t 1.5 --tube-od 4.1
@@ -102,7 +102,7 @@ python3 tools/colour-holder.py --out holder --chip-x 15.6 --board-t 1.5 --tube-o
 
 `--chip-x` is the distance from the board's left edge to the middle of the black chip, with the white socket on the right. `--tube-od` defaults to 4.0 mm and is a guess: measure the PTFE tube you use. Run the tool with `--help` for every setting. Print the test piece, lay the board in it and check that the chip sits over the slit before you print the block.
 
-The Pico's antenna needs a free 14 × 9 mm area (Raspberry Pi's datasheet), which is why the cradle leaves the board's last 14 mm free. Keep the cradle away from metal.
+The Pico's antenna needs a free 14 × 9 mm area (Raspberry Pi's datasheet), which is why the cradle leaves the board's last 14 mm free. Keep the cradle away from metal. The cradle's pin grooves sit 17.78 mm (0.7 inch) apart. That number is on Raspberry Pi's mechanical drawing but no text labels it, so lay your Pico against the printed cradle and check before you rely on it.
 
 ## Step 6: bench test
 
@@ -150,7 +150,7 @@ The Pico W's own LED repeats this pattern after each reading.
 
 | Part | Evidence | Not checked |
 |---|---|---|
-| Parts arrival (25 November 2026) | Owner's photos: the sensor answered at 0x39, both LEDs lit, all eight bands changed. | Anything with the firmware in this folder. |
+| Parts arrival (25 November 2026) | A run of the arrival-test program on the real boards: the sensor answered at 0x39, both LEDs lit, all eight bands changed. | Anything with the firmware in this folder. |
 | Firmware | The real `code.py` runs on a computer against stand-in hardware modules and a model of the sensor: readings, commands, auto gain, settings kept, Wi-Fi joining, clock, posting to the real server over real sockets, LED patterns, failures. | A real Pico W, a real router, a real AS7341, Windows. |
 | Setup window | Chromium on Linux at 1366 and 390 px: both routes, the settings file, the channel test, brightness, references, a colour, Confirm Print, the override record, the bench. | Chrome on Windows 11. A fake USB port stood in for Web Serial. |
 | Holder | Closed meshes, a strand channel that runs straight through, a chimney between chip and LEDs, walls over 0.8 mm. | Printing it, fitting a real board, light leaks. |

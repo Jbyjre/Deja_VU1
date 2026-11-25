@@ -223,6 +223,14 @@ async function main() {
       /* Step 4: brightness, by command through the app to the Wi-Fi sensor. */
       wifiPico.spool('white');
       await page.waitForTimeout(1200);
+      /* By hand first: a gain and a light chosen in the window reach the sensor. */
+      await page.locator('.cs-way summary', { hasText: 'Or set the gain' }).click();
+      await page.locator('#cs-g-gain').selectOption('4');
+      await page.fill('#cs-g-led', '12');
+      await page.locator('#cs-g-apply').click();
+      await page.waitForFunction(() => /Done: the sensor uses/.test(document.getElementById('cs-g-note').innerText), null, { timeout: 60000 });
+      await page.waitForFunction(() => { const s = ColourSetup.state.sensors[0]; return s && s.reading && s.reading.settings && s.reading.settings.gain === 4 && s.reading.settings.led_ma === 12; }, null, { timeout: 30000 });
+      check(true, 'a gain and a light chosen by hand reach the Wi-Fi sensor');
       await page.locator('[data-cs-gain="auto"]').click();
       await page.waitForFunction(() => /keeps the brightest channel/i.test(document.getElementById('cs-gain-live').innerText), null, { timeout: 60000 });
       check(/keeps the brightest channel/.test(await page.locator('#cs-gain-live').innerText()), 'Find the right brightness reaches the Wi-Fi sensor and its answer comes back');

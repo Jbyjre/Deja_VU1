@@ -65,6 +65,7 @@ HTTP_TIMEOUT_S = 6  # how long to wait for the app before trying its next addres
 WIFI_TIMEOUT_S = 15  # how long one try at joining the Wi-Fi may take
 WIFI_RETRY_S = 20  # wait this long between tries at joining the Wi-Fi
 CLOCK_REFRESH_S = 600  # ask the app for the time again this often
+NET_HOLD_S = 10  # after a failed try, leave the app alone this long, so the readings keep their pace
 DEFAULT_APP_PORT = 8000
 # The board's own LED (Pico W) says what the Wi-Fi is doing. Counted in blinks, repeated after each reading:
 LED_HELP = {"steady on": "readings are reaching Deja Vu1 (or Wi-Fi is not set up and USB is in use)",
@@ -238,6 +239,7 @@ class Link:
         self.last_stamp = 0
         self.attempt_at = -1000
         self.server = 0  # which of the app's addresses worked last
+        self.failed_at = -1000
         self.reported = None
 
     # -- facts ------------------------------------------------------------------------------------------
@@ -385,7 +387,10 @@ class Link:
 
     def sync(self):
         """Ask the app for its time, and check that the printer, the module and the address are right."""
-        status, _, data = self.request("GET", "/api/colorcheck/sensors?printer=" + self.net["printer"])
+        path = "/api/colorcheck/sensors?printer=" + self.net["printer"]
+        status, _, data = self.request("GET", path)
+        if status == 401 and self.pair():  # the device lock is on: the first thing the app hears is the time request
+            status, _, data = self.request("GET", path)
         if status == 200:
             self.learn_time(data.get("server_time"))
             return self.offset is not None
@@ -427,6 +432,8 @@ class Link:
 
     def send(self, message, result=None):
         """Post one reading. Returns the commands the app sent back (a list), or None when it did not go through."""
+        if self.state == "unreachable" and mono_seconds() - self.failed_at < NET_HOLD_S:
+            return None
         try:
             if not self.join():
                 return None
@@ -448,6 +455,7 @@ class Link:
                 status, _, data = self.request("POST", path, body)
             return self.answer(status, data)
         except OSError as error:
+            self.failed_at = mono_seconds()
             where = ", ".join("%s:%d" % pair for pair in self.net["server"])
             self.set("unreachable", "Could not reach Deja Vu1 at %s (%s). Is it running on the computer, on the same "
                      "Wi-Fi, with Python allowed through the firewall?" % (where, error))

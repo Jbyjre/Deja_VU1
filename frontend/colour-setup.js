@@ -455,6 +455,12 @@ const ColourSetup = (() => {
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-gain" data-state="todo"></span>Set the brightness</h3>
         <p class="field-hint">Put the white target (white paper or white filament) where the filament will go, then let the sensor pick the strongest setting that does not clip.</p>
         <div id="cs-gain-live" class="cs-live"></div>
+        <details class="cs-way"><summary>Or set the gain and the light by hand</summary>
+          <div class="field-row field-row-end"><label class="field field-narrow"><span>Gain</span><select id="cs-g-gain">${[0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512].map(g => `<option${g === 16 ? ' selected' : ''}>${g}</option>`).join('')}</select></label>
+            <label class="field field-narrow"><span>Light (mA, 4 to 20)</span><input id="cs-g-led" type="number" min="4" max="20" step="2" value="10"></label>
+            <button type="button" class="btn small" id="cs-g-apply">Apply</button></div>
+          <p class="field-hint" id="cs-g-note" role="status">A higher gain reads dim colours better and clips bright ones sooner. A reference belongs to the gain and light it was recorded at: record it again after a change.</p>
+        </details>
       </li>
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-cal" data-state="todo"></span>Record the white and dark references</h3>
         <p class="field-hint">White: the white target in place. Dark: the holder empty. Record the white one first, at the brightness from the last step. If the brightness changes later, record them again.</p>
@@ -509,6 +515,12 @@ const ColourSetup = (() => {
     $('cs-download').addEventListener('click', download);
     $('cs-copy').addEventListener('click', copy);
     $('cs-send').addEventListener('click', sendOverUsb);
+    $('cs-g-apply').addEventListener('click', async () => {
+      const note = $('cs-g-note');
+      note.textContent = 'Sending…';
+      const r = await runCommand({ cmd: 'set', gain: Number($('cs-g-gain').value), led_ma: Number($('cs-g-led').value) });
+      note.textContent = r.ok ? 'Done: the sensor uses the new settings from its next reading.' : r.message;
+    });
     $('cs-b-take').addEventListener('click', takeBench);
     $('cs-b-download').addEventListener('click', downloadBench);
     $('cs-b-again').addEventListener('click', () => { st.bench.insertion = Math.min(99, st.bench.insertion + 1); $('cs-b-insertion').textContent = `Insertion ${st.bench.insertion}`; });

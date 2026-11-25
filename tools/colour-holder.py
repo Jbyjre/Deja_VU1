@@ -12,9 +12,11 @@ lets room light in and changes every reading. docs/colour-checker.md says how to
 
 What is known and what is not
   Known, from the makers' own documents: the sensor board is 30.5 x 23 mm with 2.0 mm mounting holes (Waveshare wiki); the
-  Pico W is 51 x 21 x 1 mm with four 2.1 mm holes, its two pin rows are 17.78 mm apart (the 0.1 inch grid) and its
-  antenna end needs a free 14 x 9 mm area (Raspberry Pi's Pico W datasheet); the sensor sees a 40 degree half cone
-  (ams datasheet), which is why the strand sits 1 to 2 mm below it.
+  Pico W is 51 x 21 x 1 mm with four 2.1 mm holes and its antenna end needs a free 14 x 9 mm area (Raspberry Pi's Pico W
+  datasheet); the sensor sees a 40 degree half cone (ams datasheet), which is why the strand sits 1 to 2 mm below it.
+  Likely, not confirmed: the Pico's two pin rows are 17.78 mm (0.7 inch, seven 0.1 inch pitches) apart. The number is on
+  Raspberry Pi's mechanical drawing, but the datasheet's text does not label it. Check it against your Pico with a ruler
+  before you print the cradle, and change `rows` in cradle() if it differs.
   Estimated from a product picture, NOT measured: where the sensor chip sits on the board (--chip-x), the board's
   thickness, how tall its parts and socket are. Measure your board with a ruler or calipers and pass the numbers in, or print
   the test piece first (--part coupon) and check the fit before printing the whole block.
