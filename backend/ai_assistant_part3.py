@@ -12,6 +12,7 @@ import ai_providers
 import ai_signin
 import ai_watch_policy
 import automations
+import base64
 import cost_calculator
 import filament_inventory
 import insights
@@ -278,7 +279,7 @@ def watch_settings(on=None, minutes=None, pause=None, **more):
                 raise ValueError("For each kind of problem choose: " + ", ".join(ai_watch_policy.ACTIONS))
             policy.update(sent)
         w["policy"] = policy
-        for key in ("first_layer", "last_layers", "compare", "confirm"):
+        for key in ("first_layer", "last_layers", "compare", "confirm", "picture"):
             if more.get(key) is not None:
                 w[key] = bool(more[key])
         if more.get("looks") is not None:
@@ -441,8 +442,14 @@ def _watch_one(printer, w, st, reason, wait=None):
     if alert:
         try:
             said = {"failed": "it looks failed", "worry": "worth a look"}.get(verdict, "worth a look")
+            shot = None
+            if w.get("picture", True) and picture:
+                try:
+                    shot = (base64.b64decode(picture[1]), picture[0])
+                except (TypeError, ValueError):
+                    shot = None
             notifications.notify(f"{name}: print watch says {said}. {entry['why']}{' Paused.' if entry['paused'] else ''}",
-                                 "high" if verdict == "failed" or entry["paused"] else "normal")
+                                 "high" if verdict == "failed" or entry["paused"] else "normal", picture=shot)
             entry["alerted"] = True
         except Exception:
             entry["alerted"] = False
@@ -535,7 +542,7 @@ def watch_view():
 
 def _print_watch(**changes):
     allowed = {k: changes.get(k) for k in ("on", "minutes", "pause", "first_layer", "last_layers", "compare", "confirm",
-                                           "notify", "looks", "sensitivity", "notes", "policy")}
+                                           "picture", "notify", "looks", "sensitivity", "notes", "policy")}
     on, minutes, pause = allowed.pop("on"), allowed.pop("minutes"), allowed.pop("pause")
     watch_settings(on, minutes, pause, **allowed)
     return {"print_watch": _settings()["watch"]}
@@ -658,6 +665,7 @@ TOOLS = {
     "automation_remove": _tool("safe", "Delete an automation rule.", "rule_id",
                                lambda rule_id: {"rules": automations.delete_rule(str(rule_id))}),
     "print_watch": _tool("safe", "Change print watch.", "on, minutes 2-60, first_layer, last_layers, compare, confirm, "
+                         "picture (on alerts), "
                          "looks [" + ",".join(WATCH_LOOKS) + "], sensitivity relaxed|normal|careful, notes, policy "
                          "{cosmetic|fixable|failing|crash: note|notify|pause|decide}", _print_watch),
     "file_delete": _tool("ask", "Delete a file from the library.", "name", _file_delete),

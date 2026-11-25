@@ -595,7 +595,8 @@ async function saveWatch(host) {
     const policy = {};
     host.querySelectorAll('[name=ai-watch-pol]').forEach(sel => { policy[sel.dataset.sev] = sel.value; });
     const body = { on: v('#ai-watch-on').checked, first_layer: v('#ai-watch-first').checked, compare: v('#ai-watch-compare').checked,
-      last_layers: v('#ai-watch-last').checked, confirm: v('#ai-watch-confirm').checked, policy,
+      last_layers: v('#ai-watch-last').checked, confirm: v('#ai-watch-confirm').checked,
+      picture: v('#ai-watch-picture').checked, policy,
       looks: [...host.querySelectorAll('[name=ai-watch-look]:checked')].map(i => i.value),
       notes: v('#ai-watch-notes').value };
     const min = host.querySelector('[name=ai-watch-min]:checked'), sense = host.querySelector('[name=ai-watch-sense]:checked');

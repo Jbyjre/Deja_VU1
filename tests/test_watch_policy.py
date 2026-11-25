@@ -100,7 +100,7 @@ class WatchCase(helpers.Base):
         self.state = {"state": "printing", "printer_name": "Workshop U1", "current_file": "bracket.gcode", "progress": 0.4,
                       "layer": {"current": 40, "total": 100}}
         self.picture = (helpers.FakeJpeg.data, "image/jpeg")
-        self.paused, self.sent, self.waited = [], [], []
+        self.paused, self.sent, self.waited, self.shots = [], [], [], []
 
         @contextmanager
         def use(pid):
@@ -112,7 +112,8 @@ class WatchCase(helpers.Base):
                                                 "is_connected": lambda pid=None: True}),
                               (ai_assistant.printer_control, {"pause_print": lambda: self.paused.append(1) or {"ok": True},
                                                               "cancel_print": lambda: self.fail("the watch cancelled")}),
-                              (ai_assistant.notifications, {"notify": lambda m, p="normal": self.sent.append((m, p))})):
+                              (ai_assistant.notifications, {"notify": lambda m, p="normal", picture=None:
+                                                            self.sent.append((m, p)) or self.shots.append(picture)})):
             for name, fn in value.items():
                 patcher = patch.object(target, name, fn, create=True)
                 patcher.start()
@@ -126,6 +127,18 @@ class WatchCase(helpers.Base):
 
 
 class TestWatchActs(WatchCase):
+    def test_an_alert_carries_the_picture_it_studied_unless_switched_off(self):
+        ai_assistant.watch_settings(on=True, first_layer=False, last_layers=False, confirm=False,
+                                    policy={"cosmetic": "note", "fixable": "notify", "failing": "notify", "crash": "notify"})
+        self.assertTrue(ai_assistant._settings()["watch"]["picture"])            # on unless the owner turns it off
+        self.tick(answer("fixable", "A corner is lifting."))
+        self.assertEqual(self.shots, [self.picture])
+        ai_assistant.watch_settings(picture=False)
+        self.assertFalse(ai_assistant._settings()["watch"]["picture"])
+        ai_assistant._watch["last"].clear()
+        self.tick(answer("fixable", "A corner is lifting."))
+        self.assertEqual((len(self.sent), self.shots[-1]), (2, None))
+
     def test_each_kind_of_problem_follows_its_rule(self):
         ai_assistant.watch_settings(on=True, first_layer=False, last_layers=False, confirm=False,
                                     policy={"cosmetic": "note", "fixable": "notify", "failing": "pause", "crash": "pause"})

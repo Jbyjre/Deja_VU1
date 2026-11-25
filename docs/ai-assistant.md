@@ -127,6 +127,9 @@ model on your own computer keeps all of that at home.
   what it did. A pause goes through the same checks as the Pause button (watch-only mode still
   blocks it), happens only while the printer prints and, with **Look twice before pausing**, only
   once a second picture agrees. Print watch can pause a print but never cancels or starts one.
+  An alert carries the picture the AI studied (ntfy.sh, Discord and Telegram), unless you turn off
+  **Add the picture to alerts**. ntfy.sh keeps a picture for 3 hours, and anyone who knows your
+  topic name can open it. An alert held back for quiet hours goes later with its words only.
 - **Recent looks:** each look is kept on your computer with the picture it studied (the newest
   30). Mark a look **Correct** or **Wrong**, or **Ignore things like this**; your last ten marks go
   with the next looks as examples, so it learns what is normal on your printer. They are sent as

@@ -595,6 +595,7 @@ function watchCard() {
         <h3>What it does about each kind of problem</h3>
         <div class="ai-pol">${['cosmetic', 'fixable', 'failing', 'crash'].map(k => `<label class="ai-pol-row"><span><b>${esc(SEV_NAME[k])}</b><small>${esc(SEV_HINT[k])}</small></span>
           <select name="ai-watch-pol" data-sev="${k}">${['note', 'notify', 'pause', 'decide'].map(a => `<option value="${a}"${pol[k] === a ? ' selected' : ''}>${esc(ACT_NAME[a])}</option>`).join('')}</select></label>`).join('')}</div>
+        ${toggle('ai-watch-picture', w.picture !== false, 'Add the picture to alerts', 'ntfy.sh keeps it for 3 hours, and anyone who knows your topic name can open it')}
         <p class="ai-hint">Alerts go through the channels in Settings, Alerts. A pause happens only while printing, and watch-only mode and the safety checks still apply. Print watch can pause a print but never cancels or starts one. When the AI decides, it says why in each look.</p>
         <label class="ai-field"><span>Notes for it <i>about your setup, up to 300 characters</i></span><textarea id="ai-watch-notes" rows="2" maxlength="300" placeholder="The mark on the left of the sheet is old; ignore it.">${esc(w.notes || '')}</textarea></label>
       </details>

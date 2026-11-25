@@ -15,9 +15,12 @@ the queue from a background loop; the dashboard's own load can trigger a
 flush too, which is what `get_settings` conventionally pairs with).
 """
 
+import base64
+import json
 import os
 import re
 import threading
+import uuid
 from datetime import datetime
 
 import outbound
@@ -150,6 +153,12 @@ def _save_queue(queue):
 NTFY_MAX_BYTES = 4096
 DISCORD_MAX = 2000
 TELEGRAM_MAX = 4096
+# With a picture: Telegram's photo caption is up to 1024 characters and an uploaded photo up to 10 MB (Bot API,
+# sendPhoto); a Discord webhook file up to 20 MiB (discord-api-docs, Uploading Files); an ntfy.sh attachment up to
+# 15 MB, kept 3 hours (ntfy docs, Attachments). A camera frame is far smaller; a bigger one goes without the picture.
+TELEGRAM_CAPTION_MAX = 1024
+PICTURE_MAX_BYTES = 8 * 1024 * 1024
+_PICTURE_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
 
 def _discord_url(url):
@@ -159,25 +168,79 @@ def _discord_url(url):
     return url + ("&" if "?" in url else "?") + "wait=true"
 
 
-def _send_now(message, settings=None):
-    """Actually deliver `message` to every configured channel. Each result says what happened, in words."""
+def _clean_picture(picture):
+    """(bytes, mime) when it is a JPEG, PNG or WebP small enough to send, else None."""
+    if not picture or not isinstance(picture, (tuple, list)) or len(picture) != 2:
+        return None
+    data, mime = picture
+    if not isinstance(data, (bytes, bytearray)) or not data or len(data) > PICTURE_MAX_BYTES \
+            or mime not in _PICTURE_TYPES:
+        return None
+    return bytes(data), mime
+
+
+def _multipart(fields, file_field, filename, data, mime):
+    """A multipart/form-data body (RFC 7578): plain text fields, then one file. Returns (body, content type)."""
+    boundary = "dejavu1-" + uuid.uuid4().hex
+    out = []
+    for name, value in fields:
+        out.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'.encode("utf-8"))
+        out.append(str(value).encode("utf-8") + b"\r\n")
+    out.append((f'--{boundary}\r\nContent-Disposition: form-data; name="{file_field}"; filename="{filename}"\r\n'
+                f"Content-Type: {mime}\r\n\r\n").encode("utf-8"))
+    out.append(data + b"\r\n" + f"--{boundary}--\r\n".encode("utf-8"))
+    return b"".join(out), "; ".join(("multipart/form-data", "boundary=" + boundary))
+
+
+def _header_text(text):
+    """A header value ntfy reads as UTF-8: plain ASCII as it is, anything else as RFC 2047 base64 (ntfy docs)."""
+    text = re.sub(r"[\r\n]+", " ", text)
+    try:
+        text.encode("ascii")
+        return text
+    except UnicodeEncodeError:
+        return "=?UTF-8?B?" + base64.b64encode(text.encode("utf-8")).decode("ascii") + "?="
+
+
+def _send_now(message, settings=None, picture=None):
+    """Actually deliver `message` to every configured channel, with the picture where one is given. Each result says
+    what happened, in words."""
     settings = settings or get_settings()
+    picture = _clean_picture(picture)
+    filename = f"print-watch.{_PICTURE_TYPES[picture[1]]}" if picture else ""
     results = {}
 
     if settings.get("ntfy_topic"):
         url = f"https://ntfy.sh/{settings['ntfy_topic']}"
-        results["ntfy"] = outbound.send(url, "ntfy.sh", raw=outbound.clip(message, NTFY_MAX_BYTES, "utf-8")
-                                        .encode("utf-8"), method="POST",
-                                        headers={"Content-Type": "text/plain; charset=utf-8"})
+        if picture:
+            # A file is sent as the PUT body; the words go in the Message header (ntfy docs, Attach local file).
+            results["ntfy"] = outbound.send(url, "ntfy.sh", raw=picture[0], method="PUT",
+                                            headers={"filename": filename, "content-type": picture[1],
+                                                     "message": _header_text(outbound.clip(message, 1000))})
+        else:
+            results["ntfy"] = outbound.send(url, "ntfy.sh", raw=outbound.clip(message, NTFY_MAX_BYTES, "utf-8")
+                                            .encode("utf-8"), method="POST",
+                                            headers={"Content-Type": "text/plain; charset=utf-8"})
 
     if settings.get("discord_webhook_url"):
-        results["discord"] = outbound.send(_discord_url(settings["discord_webhook_url"]), "Discord",
-                                           payload={"content": outbound.clip(message, DISCORD_MAX)})
+        url = _discord_url(settings["discord_webhook_url"])
+        if picture:
+            body, ctype = _multipart([("payload_json", json.dumps({"content": outbound.clip(message, DISCORD_MAX)}))],
+                                     "files[0]", filename, *picture)
+            results["discord"] = outbound.send(url, "Discord", raw=body, method="POST", headers={"Content-Type": ctype})
+        else:
+            results["discord"] = outbound.send(url, "Discord", payload={"content": outbound.clip(message, DISCORD_MAX)})
 
     if settings.get("telegram_bot_token") and settings.get("telegram_chat_id"):
-        url = f"https://api.telegram.org/bot{settings['telegram_bot_token']}/sendMessage"
-        r = outbound.send(url, "Telegram", payload={"chat_id": settings["telegram_chat_id"],
-                                                   "text": outbound.clip(message, TELEGRAM_MAX)})
+        base = f"https://api.telegram.org/bot{settings['telegram_bot_token']}/"
+        if picture:
+            body, ctype = _multipart([("chat_id", settings["telegram_chat_id"]),
+                                      ("caption", outbound.clip(message, TELEGRAM_CAPTION_MAX))],
+                                     "photo", filename, *picture)
+            r = outbound.send(base + "sendPhoto", "Telegram", raw=body, method="POST", headers={"Content-Type": ctype})
+        else:
+            r = outbound.send(base + "sendMessage", "Telegram", payload={"chat_id": settings["telegram_chat_id"],
+                                                                         "text": outbound.clip(message, TELEGRAM_MAX)})
         # Telegram answers {"ok": false, "description": ...} when it says no.
         body = r.get("body")
         if r["ok"] and isinstance(body, dict) and body.get("ok") is False:
@@ -192,12 +255,13 @@ def _send_now(message, settings=None):
     return results
 
 
-def notify(message, priority="normal", settings=None):
+def notify(message, priority="normal", settings=None, picture=None):
     """
     Send an alert, or queue it, depending on priority and the time of day.
 
     priority="high" always sends immediately (a failed print, for example).
     priority="normal" is deferred if it falls inside quiet hours.
+    picture: optional (bytes, mime), sent with the words where it goes now; a queued alert keeps only its words.
     """
     if priority not in ("high", "normal"):
         raise ValueError("priority must be 'high' or 'normal'")
@@ -206,7 +270,7 @@ def notify(message, priority="normal", settings=None):
     now = datetime.now()
 
     if priority == "high" or not is_quiet_hours(now, settings):
-        results = _send_now(message, settings)
+        results = _send_now(message, settings, picture)
         return {"sent": True, "queued": False, "results": results}
 
     with _queue_lock:

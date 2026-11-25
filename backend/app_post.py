@@ -110,8 +110,8 @@ class PostRoutes:
                                                                body.get("price_out"), body.get("cap_usd"),
                                                                bool(body.get("clear_price"))))
                 if verb == "watch":
-                    extra = {k: body.get(k) for k in ("first_layer", "last_layers", "compare", "confirm", "notify", "looks",
-                                                      "sensitivity", "notes", "policy")}
+                    extra = {k: body.get(k) for k in ("first_layer", "last_layers", "compare", "confirm", "picture", "notify",
+                                                      "looks", "sensitivity", "notes", "policy")}
                     return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"),
                                                                        body.get("pause"), **extra))
                 if verb == "watch/now":

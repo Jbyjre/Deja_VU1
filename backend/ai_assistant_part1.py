@@ -823,7 +823,7 @@ def _watch_settings(s):
     return {"on": bool(w.get("on")), "minutes": max(WATCH_MINUTES[0], min(WATCH_MINUTES[1], minutes)),
             "first_layer": w.get("first_layer", True) is not False, "last_layers": w.get("last_layers", True) is not False,
             "compare": w.get("compare", True) is not False, "confirm": w.get("confirm", True) is not False,
-            "looks": looks, "policy": policy, "lessons": lessons,
+            "picture": w.get("picture", True) is not False, "looks": looks, "policy": policy, "lessons": lessons,
             "sensitivity": w.get("sensitivity") if w.get("sensitivity") in WATCH_SENSITIVITY else "normal",
             "notes": str(w.get("notes") or "")[:300], **ai_watch_policy.flags(policy)}
 
