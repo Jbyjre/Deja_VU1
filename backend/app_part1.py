@@ -352,9 +352,20 @@ def _loaded_heads(demo=False):
     for i in range(colour_map.HEADS):
         h = heads.get(f"T{i}") or {}
         known = h.get("filament_known", True) and h.get("filament_loaded") is not False
-        out.append({"toolhead": f"T{i}", "colour": colour_map.clean_hex(h.get("filament_color_hex")) if known else None,
-                    "type": (h.get("filament_material") or "") if known else ""})
+        colour = colour_map.clean_hex(h.get("filament_color_hex")) if known else None
+        source = "printer" if colour else None
+        measured = None if demo else _measured_colour(f"T{i}")
+        if measured:
+            colour, source = measured, "sensor"
+        out.append({"toolhead": f"T{i}", "colour": colour, "type": (h.get("filament_material") or "") if known else "",
+                    "source": source})
     return out if any(h["colour"] for h in out) else None
+
+
+def _measured_colour(toolhead):
+    """The colour checker's fresh, calibrated reading for a head, or None (never a stale or uncertain one)."""
+    view = companion_sensor.read(toolhead) or {}
+    return colour_map.clean_hex(view.get("detected_hex")) if view.get("status") == "reading" else None
 
 
 def _colour_plan(name, demo=False):
@@ -363,6 +374,7 @@ def _colour_plan(name, demo=False):
     loaded = _loaded_heads(demo)
     info["suggested"] = colour_map.suggest(info["filaments"])
     info["matched"] = colour_map.suggest(info["filaments"], loaded) if loaded else None
+    info["fit"] = colour_map.head_fit(info["filaments"], loaded) if loaded else None
     info["loaded"] = loaded
     info["heads"] = colour_map.HEADS
     return info

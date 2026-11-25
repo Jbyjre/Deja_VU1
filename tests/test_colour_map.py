@@ -158,6 +158,60 @@ class TestReadAndSuggest(unittest.TestCase):
             colour_map.check_plan(info["filaments"], [0, 1, 2, 3, 4, None])
 
 
+class TestHowWellAHeadFits(unittest.TestCase):
+    """COLOUR.1: how close each loaded head is to a colour, in bands, and whose colour it was."""
+
+    def fil(self):
+        return [{"n": 1, "colour": "#E02020", "type": "PLA", "used": True},
+                {"n": 2, "colour": "#FFFFFF", "type": "PLA", "used": False}]
+
+    def test_bands_and_material(self):
+        loaded = [{"colour": "#E02020", "type": "PLA", "source": "sensor"},
+                  {"colour": "#B02030", "type": "PLA"},
+                  {"colour": "#1030C0", "type": "PETG"},
+                  {"colour": None}]
+        fit = colour_map.head_fit(self.fil(), loaded)
+        self.assertEqual(list(fit), ["1"])            # an unused filament gets no row
+        row = fit["1"]
+        self.assertEqual([x["level"] for x in row], ["close", "near", "far", "unknown"])
+        self.assertEqual((row[0]["source"], row[1]["source"]), ("sensor", "printer"))
+        self.assertEqual([x["other_material"] for x in row], [False, False, True, False])
+
+    def test_nothing_loaded_means_no_fit(self):
+        self.assertEqual(colour_map.head_fit(self.fil(), None), {})
+
+
+class TestMeasuredColourWins(unittest.TestCase):
+    """The colour checker's fresh reading replaces what the printer reports; anything else is ignored."""
+
+    def setUp(self):
+        import app_part1
+        from unittest import mock
+        self.app, self.mock = app_part1, mock
+        state = {"toolheads": {"T0": {"filament_color_hex": "#FF0000", "filament_material": "PLA"},
+                               "T1": {"filament_color_hex": "#00FF00", "filament_material": "PLA"}}}
+        self.patches = [mock.patch.object(app_part1.mock_moonraker, "is_connected", return_value=True),
+                        mock.patch.object(app_part1.mock_moonraker, "get_printer_state", return_value=state)]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    def test_a_fresh_reading_is_used_and_said(self):
+        views = {"T0": {"status": "reading", "detected_hex": "#AA0000"}, "T1": {"status": "stale", "detected_hex": "#0000FF"}}
+        with self.mock.patch.object(self.app.companion_sensor, "read", side_effect=lambda t: views.get(t)):
+            heads = self.app._loaded_heads()
+        self.assertEqual((heads[0]["colour"], heads[0]["source"]), ("#AA0000", "sensor"))
+        self.assertEqual((heads[1]["colour"], heads[1]["source"]), ("#00FF00", "printer"))
+
+    def test_demo_data_never_takes_a_reading(self):
+        with self.mock.patch.object(self.app.companion_sensor, "read", side_effect=AssertionError("read")):
+            heads = self.app._loaded_heads(demo=True)
+        self.assertEqual(heads[0]["source"], "printer")
+
+
 class TestApply(unittest.TestCase):
     def test_orca_family_project_is_rewritten_for_four_heads(self):
         out, report = colour_map.apply(five_colour_project())
