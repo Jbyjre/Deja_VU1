@@ -90,6 +90,14 @@ up around the circle as the print advances.
 **Roughly $22–28 total**, or $6–12 if you already have a spare
 microcontroller and power supply.
 
+### What exists now (25 November 2026)
+
+The first build is one Waveshare AS7341 on a Pico W, powered from a USB wall charger beside the printer and never from the
+printer. The Pico sends its readings over home Wi-Fi to Deja Vu1, or down a USB cable to a page in Chrome or Edge. The firmware, the
+setup window on the Right colour loaded? card, a printable holder and a bench report exist and run against stand-ins. They have not
+run on the real parts, and no spool has been measured. [The guide](colour-checker.md) has the steps, and the
+[API](colour-sensor-api.md) has the messages. The four-sensor multiplexer below is a later step.
+
 ### Wiring concept
 
 WS2812 LEDs chain: data flows out of one ring and into the next, so four
@@ -168,7 +176,7 @@ more reliably.
 | Sensor | What it measures | I2C address | Notes |
 |---|---|---|---|
 | TCS34725 | Red, green, blue and clear, with an IR-blocking filter on the chip | 0x29, fixed | Common breakouts carry a white LED. Adafruit's original board (product 1334) is listed as discontinued; other makers still sell the chip on breakouts. |
-| AS7341 | Eight visible channels (415 to 680 nm), clear and near-infrared | 0x39, fixed | More channels should separate close shades better. Not verified: whether every AS7341 breakout carries its own white LED. |
+| AS7341 | Eight visible channels (415 to 680 nm), clear and near-infrared | 0x39, fixed | More channels should separate close shades better. Waveshare's board carries two white LEDs of its own (Waveshare wiki); other breakouts differ. |
 
 The addresses come from Adafruit's CircuitPython drivers on PyPI
 (`adafruit_tcs34725.py`, `adafruit_as7341.py`, `adafruit_tca9548a.py`),

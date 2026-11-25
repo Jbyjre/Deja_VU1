@@ -239,11 +239,12 @@ The real Snapmaker Orca engine (v2.4.1 Linux AppImage, build 01.10.01.50, checks
 
 ## In progress
 
-- **The colour checker** ("Right colour loaded?"). The comparison logic, a simulation and the
-  companion API, the white-reference calibration and the Confirm Print advice are tested with synthetic sensor
-  messages and a stand-in printer (`tests/test_sensor_calibration.py` and the sensor workflow in
-  `tools/browser-walk.js`). The firmware, sensor drivers and a bench test of a physical sensor come next.
-  [Design](hardware-modules.md)
+- **The colour checker** ("Right colour loaded?"). The two boards passed an arrival test on 25 November 2026 (the sensor
+  answered, both LEDs lit, all eight bands changed). The comparison logic, the companion API, the calibration, the Confirm Print
+  advice, the Pico firmware (run on a computer against stand-in hardware and a model of the sensor), its Wi-Fi route (real
+  sockets to the real server), the setup window, the holder generator and the bench report pass their tests; see "Tested with
+  stand-ins" below. Not yet done: the firmware on a real Pico W, a real router, Chrome on Windows 11, a printed holder and a bench
+  run on real spools. No accuracy figure exists. [Guide](colour-checker.md) and [design](hardware-modules.md)
 - **LED dock rings.** The on-screen states exist; the ring driver doesn't. A WLED strip you already
   own can show the same states today.
 - **Spool scales.** Planned after the colour checker.

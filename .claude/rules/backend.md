@@ -153,7 +153,18 @@ slicing and launcher files have their own notes in this folder.
   (`color_check.evidence`, `advice`): advice only, demo printers get a repeatable simulation with no advice, and
   `printer_control._start_locked` records a start that went ahead against the sensor (`colour_overrides.json`).
   The companion API saves explicit per-printer channel/sensor bindings, retains readings only in memory,
-  expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
+  expires captures at 30 seconds and never gives optical print approval.
+  **Colour checker hardware (25 November 2026):** firmware in `hardware/colour-checker/code.py` (copied to `frontend/colour-checker/` for the setup window;
+  `tests/test_colour_checker_files.py` keeps them equal). It reaches the app by Wi-Fi (the Pico posts; the app never calls it) or USB (`frontend/colour-bridge.js`).
+  `companion_sensor.py` also keeps: optional `settings` (a white reference stores them; `sensor_calibration.same_settings` decides if a sample may be
+  coloured; `average` is neutral), `info`, `command_result`, an in-memory `unassigned` list (a refused reading from an unassigned sensor is how it announces
+  itself), a one-command-per-head queue (`queue_command`, delivered once in the reply to the sensor's next reading, `COMMAND_TTL_S` 120) and `server_time` as a
+  WHOLE number (a CircuitPython float cannot hold a Unix time: never put an epoch time in a float on the Pico). `color_check.connection_info` (route
+  `/api/colorcheck/connection`, in `NOT_RECORDED`) gives the home-network addresses. `app.py` `_note_page` ignores `DejaVu1-sensor/` agents so a powered sensor
+  cannot keep the server running. `colour_bench.py` records labelled bench samples (routes `/api/colorcheck/bench`, `bench/delete`) and holds the sums;
+  `tools/colour-bench.py` reports. It must never quote a rate from fewer than `MIN_SPOOLS` spools and counts spools, not readings.
+  `tools/colour_pico_sim.py` runs the real firmware file on a computer against stand-in modules; `tools/colour-holder.py` writes the STL parts.
+  Unverified on hardware: everything above runs only against stand-ins.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
 

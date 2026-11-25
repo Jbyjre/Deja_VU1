@@ -177,6 +177,7 @@ const ColourSetup = (() => {
       (s.hello ? `<p class="field-hint">Pico <code>${esc(s.hello.device_id)}</code>, firmware ${esc(s.hello.firmware)}. ${(s.net || s.hello.net || {}).ssid ? `Wi-Fi saved: ${esc((s.net || s.hello.net).ssid)} (${esc((s.net || s.hello.net).source)}).` : 'No Wi-Fi saved on it.'}</p>` : ''));
     $('cs-usb-connect').hidden = !!s.hello;
     $('cs-usb-disconnect').hidden = !s.hello;
+    $('cs-usb-forget').hidden = !s.hello;
     $('cs-usb-connect').disabled = !ColourBridge.supported();
     document.querySelectorAll('[data-cs-needs-usb]').forEach(b => { b.disabled = !s.hello || problems(values()).length > 0; });
   }
@@ -432,7 +433,8 @@ const ColourSetup = (() => {
         <details class="cs-way"><summary>USB cable: the Pico is plugged into this computer</summary>
           <p class="field-hint">Works in Chrome or Edge, on this computer, with the page opened at localhost. Readings go through this page, so it must stay open. A good second way when the Wi-Fi will not behave, because the Pico then tells you what is wrong in words.</p>
           <div id="cs-usb-live" class="cs-usb"></div>
-          <div class="field-row"><button type="button" class="btn small primary" id="cs-usb-connect">Connect with USB</button><button type="button" class="btn small" id="cs-usb-disconnect" hidden>Disconnect</button></div>
+          <div class="field-row"><button type="button" class="btn small primary" id="cs-usb-connect">Connect with USB</button><button type="button" class="btn small" id="cs-usb-disconnect" hidden>Disconnect</button>
+            <button type="button" class="btn small" id="cs-usb-forget" hidden>Forget the Wi-Fi saved on the Pico</button></div>
         </details>
         <details class="cs-way"><summary>Printable parts: the black holder and the Pico's cradle</summary>
           <p class="field-hint">Print in black PLA or PETG: a light colour lets room light in. Print the short test piece first and check that the board fits and the chip sits over the slit before printing the whole block. The Pico stays outside the block, beside it, within the sensor's 20 cm cable, powered by its own USB wall charger. Never from the printer.</p>
@@ -513,6 +515,10 @@ const ColourSetup = (() => {
     $('cs-bench').addEventListener('toggle', e => { if (e.target.open) loadBench(); });
     $('cs-usb-connect').addEventListener('click', () => ColourBridge.connect());
     $('cs-usb-disconnect').addEventListener('click', () => ColourBridge.disconnect());
+    $('cs-usb-forget').addEventListener('click', async () => {
+      const r = await ColourBridge.request({ cmd: 'wifi_clear' });
+      toast(r ? r.message : 'The Pico did not answer.', r && r.ok ? 'ok' : 'bad', 6000);
+    });
     ColourBridge.on(() => { if (dialog.open) { renderUsb(); renderLive(); } });
     dialog.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.csHead) st.pick[e.target.dataset.csHead] = e.target.value; });
     dialog.addEventListener('click', async e => {

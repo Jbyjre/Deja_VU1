@@ -32,6 +32,12 @@ here with what Deja Vu1 does with each.
   the zoom step, the standard views and the shortcut list) were read from Snapmaker Orca's source and shortcut list and
   written again here; no code was copied.
 
+- **CircuitPython** (adafruit/circuitpython, MIT) and Adafruit's **adafruit_as7341**, **adafruit_register** and
+  **adafruit_bus_device** libraries (MIT). The colour checker's firmware (`hardware/colour-checker/code.py`) runs on
+  CircuitPython and imports the AS7341 library. Deja Vu1 does not ship them: you install them on the Pico from
+  Adafruit's bundle. The firmware is Deja Vu1's own code, written from the libraries' documented properties and the
+  chip's datasheet.
+
 ## Shipped with Deja Vu1
 
 - **3DBenchy** by Creative Tools (3dbenchy.com), public domain (CC0) since

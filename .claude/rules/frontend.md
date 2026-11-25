@@ -21,12 +21,12 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
   `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
   `workshop.js` → `player.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
-  → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `errorhelp.js` →
+  → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `colour-bridge.js` → `colour-setup.js` → `logbook.js` → `errorhelp.js` →
   `insights.js` → `prints.js` → `printroom.js` → `gcode-view.js` → `slicer-cut.js` → `slicer-model.js` → `slicer-scene.js` → `slicer-ui.js` → `slicer-prepare.js` → `slicer-cutui.js` → `slicer-keys.js` → `slicer-settings.js` → `slicer-filament.js` → `slicer-sets.js` → `slicer-help.js` → `slicer-sheet.js` → `slicer-path.js` → `slicer-preview.js` → `slicer.js` →
   `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `activity.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
-  `guide.css` → `assistant.css` → `tester.css` → `errorhelp.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
+  `guide.css` → `assistant.css` → `tester.css` → `errorhelp.css` → `colour-setup.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
   `shell.css` → `shell-panes.css` → `cockpit.css` → `glass.css` → `text.css` → `looks.css`.
 
 ## Split files (18 and 19 November 2026)
@@ -191,6 +191,12 @@ code can sit in more than one part: search the family (`grep -n "function render
   rule names joins the first part. A new card on those screens needs a rule.
   `Sections.reveal` opens the part of anything scrolled to. The toolbar edge's parts row (`#pb-parts`) replaces `Sections`' own
   buttons (`.sec-bar`, kept hidden in `#pb-tabs` for ids); `Sections.choose(tab, key)` is still the one way to open a part. "Everything" is gone.
+- `colour-bridge.js` + `colour-setup.js` + `colour-setup.css` (after `printer-extras.js`): the colour checker's setup window (`#colour-setup`, opened by
+  `#colour-setup-open` on the Right colour loaded? card). `ColourBridge` is the USB route (Web Serial, only after Connect or an earlier allow; posts a reading
+  only when its sensor has a head and the Pico is not already sending by Wi-Fi). `ColourSetup` makes `settings.toml` (`tomlString`, `tomlFor`, `problems`),
+  lists sensors that wait for a head (Wi-Fi ones from the server, a USB one from the cable), runs the channel test, brightness (a command: over USB it is answered
+  at once, over Wi-Fi it rides the next reading), the references and the bench. **The Wi-Fi password is used in this window only: never send it to a route.**
+  `tools/colour-setup-check.js` drives all of it with the real firmware as a stand-in Pico and a fake `navigator.serial`.
 - `printer-page.js` + `printer.css`: the Printer page, the Overview cards, the camera view (`.pcam`,
   at most five pictures a second, only while visible) and Preferences.
 - `workshop.js`: live WebSocket with a polling fallback (asks once a second and retries the WebSocket
