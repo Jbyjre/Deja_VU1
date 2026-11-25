@@ -25,6 +25,16 @@ The processor type of the Linux runs was not written down.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
 - Other slicers.
 
+## Slicer plugins and the hand-off script
+
+- **OrcaSlicer plugins.** OrcaSlicer 2.5 added a plugin system (release coverage, 25 November 2026; read from
+  search results, not from OrcaSlicer's own pages, which this check could not open). Not verified: whether
+  Snapmaker Orca's newest release has it, and which licence a plugin for an AGPL-licensed slicer must carry.
+  Until both are answered there is no Deja Vu1 plugin for either slicer.
+- **The hand-off script** (`slicer-handoff/`) works in any slicer with a post-processing field: it copies each
+  exported G-code file to Deja Vu1's Files for Confirm Print. Run by hand against Deja Vu1 on 25 November 2026;
+  not yet run from inside Snapmaker Orca or OrcaSlicer.
+
 ## Reported, not yet explained
 
 - **Snapmaker Orca 2.4.1 on Windows 11** (a tester's computer, November 2026): a slice ended with exit
