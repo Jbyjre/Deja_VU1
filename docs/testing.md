@@ -257,6 +257,11 @@ preview and heavy-model checks ran in Chromium.
   consistency. The window, a guide with 10 pictures, the video button and the Care card were checked in Chromium
   at 1366 and 390 px, light and dark, on 21 November 2026. A video's player loaded with its title; playback itself
   did not start in the sandbox's network, so it is unconfirmed. A real U1 raised a code on 22 November 2026 (see "On a real Snapmaker U1").
+- **Deja Vu1 remembers (the print record):** files recognised by fingerprint (a renamed copy, a model and the G-code
+  sliced from it), the history line, Print it like the time it worked with the heads that changed, the facts from your
+  own prints, the layer a print ended on, the AI watch's notes and its first-layer check, run against the stand-in
+  printer and the record (`tests/test_recall.py`, 19 tests). Files, Confirm Print and Printer › Prints with the demo
+  data were checked in Chromium at 1366 px light and 390 px dark on 25 November 2026. No real U1 has run it.
 - **A second printer and other Klipper printers:** the fleet tests send one action to several
   stand-in printers at once and report each printer's own result (`tests/test_fleet_command.py`).
   A one-head 235 × 235 × 250 mm Klipper printer connects and describes its own size and heads

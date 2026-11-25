@@ -41,6 +41,11 @@ and overdue maintenance at the top.</sub>
   build volume, toolheads and temperatures (with line numbers), the colour loaded in each head,
   nozzles, spool weight, maintenance, time, grams and cost. The server checks again when you press
   Start, even from your phone, and refuses in words if something changed.
+- **It remembers what you printed.** A file that comes back to Files, Confirm Print or the Slicer says how
+  often it printed and how the last time ended, with the layer it stopped at and what the AI watch noted. Print it
+  like the time it worked runs the same G-code again, and Confirm Print says which heads hold other filament now.
+  Printer › Prints shows plain facts from your own prints, such as how often PETG finished, each with the prints behind it.
+  Files are recognised by a fingerprint worked out on your computer; nothing is sent anywhere.
 - **Watch a live 3D twin.** A model of the U1 follows the print: the head on the gantry, the bed
   dropping as layers build, the spools in their colours, and the print itself, drawn from the
   file's own G-code. One click turns it into an engineering drawing with dimensions.

@@ -43,6 +43,7 @@ import logbook
 import mock_moonraker
 import print_queue
 import print_record
+import recall
 import timelapse
 
 TICK_SECONDS = 0.25
@@ -325,7 +326,10 @@ def _record_print(printer_id, name, state, finish_event, payload, simulated):
         if name == "started":
             with mock_moonraker.use_printer(printer_id):
                 job = mock_moonraker.get_current_job() or {}
-            return print_record.started(printer_id, mock_moonraker.printer_name(printer_id), state, job, simulated)["id"]
+            entry = print_record.started(printer_id, mock_moonraker.printer_name(printer_id), state, job, simulated)
+            if entry.get("file"):
+                recall.start_in_background(entry["id"], entry["file"])   # the file's fingerprint, off the 250 ms tick
+            return entry["id"]
         job = (finish_event or {}).get("job") if name == "finished" else None
         cost = (payload.get("summary") or {}).get("cost")
         entry = print_record.ended(printer_id, name, {**state, "printer_name": mock_moonraker.printer_name(printer_id)},

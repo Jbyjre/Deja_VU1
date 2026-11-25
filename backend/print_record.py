@@ -167,8 +167,59 @@ def ended(printer_id, how, state, job=None, cost=None, timelapse_session=None, d
                      timelapse=timelapse_session or entry.get("timelapse"))
         if state.get("state_message") and how != "finished":
             entry["ended_because"] = str(state["state_message"])[:300]
+        layer = _layer(state)
+        if layer:
+            entry["layer"] = layer
         _save(data)
         return dict(entry)
+
+
+def _layer(state):
+    """The layer the print reached, {"current", "total"}, when the printer reports it."""
+    layer = (state or {}).get("layer") or {}
+    try:
+        current = int(layer.get("current") or 0)
+        total = int(layer.get("total") or 0)
+    except (TypeError, ValueError):
+        return None
+    if current <= 0:
+        return None
+    return {"current": current, "total": total if total >= current else None}
+
+
+def set_identity(entry_id, fingerprint, sliced_from=None, model_fingerprint=None):
+    """What recall.py worked out about the print's file in the background: its fingerprint and the model it came from."""
+    with _lock:
+        data = _load()
+        for e in data["prints"]:
+            if e.get("id") == entry_id:
+                if fingerprint:
+                    e["fingerprint"] = fingerprint
+                if sliced_from:
+                    e["sliced_from"] = sliced_from
+                if model_fingerprint:
+                    e["model_fingerprint"] = model_fingerprint
+                _save(data)
+                return
+
+
+WATCH_NOTES_KEPT = 5
+
+
+def add_watch_note(printer_id, why, verdict, layer=None):
+    """The AI watch worried about the running print, or saw it fail: keep its words on the entry (the last few)."""
+    if not why:
+        return
+    with _lock:
+        data = _load()
+        entry = next((e for e in reversed(data["prints"]) if e.get("printer") == printer_id and e.get("status") == "running"), None)
+        if entry is None:
+            return
+        notes = entry.setdefault("watch", [])
+        notes.append({"at": _now(), "verdict": str(verdict or "")[:20], "why": str(why)[:300],
+                      "layer": _layer({"layer": layer}) if isinstance(layer, dict) else None})
+        del notes[:-WATCH_NOTES_KEPT]
+        _save(data)
 
 
 def set_timelapse(entry_id, session):
@@ -368,6 +419,8 @@ def _with_files(rows):
         entry = files.get(e.get("file") or "")
         found = _SLICED_FROM.match((entry or {}).get("note") or "")
         model = found.group(1) if found and found.group(1) in files else None
+        if model is None and e.get("sliced_from") in files:
+            model = e["sliced_from"]
         out.append({**e, "in_library": entry is not None, "model": model})
     return out
 
