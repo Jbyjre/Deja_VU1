@@ -436,7 +436,7 @@ async function renderColours(entry) {
               <span class="cm-hname">Head ${x.h + 1}</span>
               <span class="cm-hwhat">${x.lead ? `${esc(x.lead.name)}${x.lead.type ? ` · ${esc(x.lead.type)}` : ''}` : 'Not used'}</span>
               ${x.members.length > 1 ? `<span class="cm-hfrom">filaments ${x.members.map(f => f.n).join(' + ')}</span>` : ''}
-              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, 'Loaded now')} ${data.loaded[x.h].source === 'sensor' ? 'measured' : 'loaded'}</span>` : ''}
+              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, '')}${data.loaded[x.h].source === 'sensor' ? `<span>measured</span>` : `<span>loaded</span>`}</span>` : ''}
             </li>`).join('')}
           </ol>
           <div class="cm-rows" role="list">
