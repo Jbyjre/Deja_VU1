@@ -521,3 +521,36 @@ html.ai-glow-on .ai-glow::after { animation: ai-glow-breathe 5s ease-in-out infi
 @media (max-width: 720px) { .tab-panel :is(section.card, .card[id]) { scroll-margin-top: 76px; } }
 .ai-watch-sum { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; padding: 0; }
 .ai-watch-sum li { padding: 5px 10px; border-radius: 999px; font: 600 12px/1.2 var(--font-sans); color: var(--text-dim); background: color-mix(in oklch, var(--text) 6%, transparent); }
+
+/* Print watch's policy, its looks and the time-lapse rehearsal (AI.1) */
+.ai-watch-more > h3 { margin: 14px 0 6px; font: 650 12px/1.2 var(--font-sans); color: var(--text-dim); }
+.ai-pol { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; max-width: 900px; }
+@media (max-width: 760px) { .ai-pol { grid-template-columns: 1fr; } }
+.ai-pol-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 4px 0; }
+.ai-pol-row span { display: grid; gap: 1px; min-width: 0; }
+.ai-pol-row b { font: 600 13px/1.3 var(--font-sans); color: var(--text); }
+.ai-pol-row small { font: 500 11.5px/1.3 var(--font-sans); color: var(--text-faint); }
+.ai-pol-row select, .ai-rehearse-n select { flex: none; min-height: 36px; padding: 6px 28px 6px 10px; border-radius: 11px; border: 1px solid var(--line, color-mix(in oklch, var(--text) 18%, transparent));
+  background: var(--paper-solid, #fff); color: var(--text); font: 600 12.5px/1.2 var(--font-sans); }
+.ai-pol-row select:focus-visible, .ai-rehearse-n select:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.ai-watch-log li { display: flex; gap: 10px; align-items: flex-start; }
+.ai-watch-log li > div { min-width: 0; flex: 1; }
+.ai-watch-thumb { flex: none; width: 88px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #0d1117; }
+.ai-sev { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font: 600 10.5px/1.5 var(--font-sans); font-style: normal; color: var(--text-dim); background: color-mix(in oklch, var(--text) 8%, transparent); }
+.ai-sev.is-fixable { color: var(--warn-text); background: color-mix(in oklch, var(--warn-text) 12%, transparent); }
+.ai-sev:is(.is-failing, .is-crash) { color: #b00d26; background: rgb(200 16 46 / .1); }
+html[data-theme="dark"] .ai-sev:is(.is-failing, .is-crash) { color: #ff8a9a; background: rgb(255 120 140 / .14); }
+.ai-watch-log .ai-watch-did { font-weight: 600; color: var(--text); }
+.ai-watch-did a { color: var(--accent-text); }
+.ai-watch-why { margin-top: 4px; }
+.ai-watch-why summary { display: inline-flex; min-height: 28px; align-items: center; font: 600 12px/1.2 var(--font-sans); color: var(--accent-text); cursor: pointer; }
+.ai-watch-why summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 4px; }
+.ai-watch-judge { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ai-watch-judge .chip-btn { min-height: 32px; }
+.ai-watch-judge .chip-btn[aria-pressed="true"] { color: var(--accent-text); box-shadow: inset 0 0 0 1.5px currentColor; }
+.ai-rehearse { align-items: flex-end; }
+.ai-rehearse-n { display: grid; gap: 3px; font: 600 12px/1.2 var(--font-sans); color: var(--text-dim); }
+.ai-rehearse .btn:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.ai-rehearse-state { min-height: 1.4em; margin: 6px 0 0; font: 500 12.5px/1.4 var(--font-sans); color: var(--text-dim); }
+@media (max-width: 520px) { .ai-watch-thumb { width: 64px; } .ai-pol-row { flex-wrap: wrap; } }
+@media (prefers-contrast: more) { .ai-watch-judge .chip-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px currentColor; } }

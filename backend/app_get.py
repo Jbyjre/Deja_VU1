@@ -155,7 +155,11 @@ class GetRoutes:
         if route == "/api/assistant/watch/picture":
             if self._module_blocked("ai_assistant"):
                 return None
-            seen = ai_assistant.watch_picture(query.get("printer", [""])[0])
+            look = query.get("look", [""])[0]
+            try:
+                seen = ai_assistant.watch_look_picture(look) if look else ai_assistant.watch_picture(query.get("printer", [""])[0])
+            except ValueError as error:
+                return self._send_json({"error": str(error)}, status=400)
             if not seen:
                 return self._send_json({"error": "No picture yet"}, status=404)
             return self._send_bytes(seen[0], seen[1])

@@ -110,12 +110,16 @@ class PostRoutes:
                                                                body.get("price_out"), body.get("cap_usd"),
                                                                bool(body.get("clear_price"))))
                 if verb == "watch":
-                    extra = {k: body.get(k) for k in ("first_layer", "compare", "confirm", "notify", "looks",
-                                                      "sensitivity", "notes")}
+                    extra = {k: body.get(k) for k in ("first_layer", "last_layers", "compare", "confirm", "notify", "looks",
+                                                      "sensitivity", "notes", "policy")}
                     return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"),
                                                                        body.get("pause"), **extra))
                 if verb == "watch/now":
                     return self._send_json(ai_assistant.watch_now(body.get("printer") or printer_id))
+                if verb == "watch/judge":
+                    return self._send_json(ai_assistant.watch_judge(body.get("look"), body.get("judged")))
+                if verb == "watch/rehearse":
+                    return self._send_json(ai_assistant.watch_rehearse(body.get("frame"), body.get("label"), body.get("name")))
                 if verb == "estimate":
                     return self._send_json(ai_assistant.estimate(body.get("thread"), body.get("text"), printer_id, demo,
                                                                  body.get("context")))

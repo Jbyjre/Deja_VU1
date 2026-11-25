@@ -289,6 +289,7 @@ preview and heavy-model checks ran in Chromium.
   (`tests/test_spoolman.py`).
 - **WLED and Home Assistant:** stand-in servers that follow each one's own rules
   (`tests/test_outbound.py`), plus refused and unreachable addresses (`tests/test_bridges.py`).
+- **Print watch rules (AI.1):** `tests/test_watch_policy.py` (17 tests) runs the watch against a stand-in printer and a scripted AI: each rule for each kind of problem, the AI's own choice, a pause only while printing and only when a second look agrees, the look near the end, the watch log and its pictures surviving a restart and dropping the oldest, marks going with the next look, a rehearsal that pauses and sends nothing, and the routes. In Chromium at 1366 and 390 pixels wide the rules, the looks with their pictures and the marks were drawn without errors or sideways scrolling, and the rehearsal took six JPEG frames of about 120 KB each from a real MP4 video. Not run: a real AI judging a real U1's camera.
 - **Tailscale and remote access:** a stand-in `tailscale` program answering in Tailscale's own
   formats (`tests/test_remote.py`).
 - **AR preview:** a stand-in for a phone's WebXR in Chromium, at desktop and phone sizes with touch

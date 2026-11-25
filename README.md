@@ -32,7 +32,9 @@ and overdue maintenance at the top.</sub>
   person: a fault, a paused or finished print, maintenance that's due.
 - **Ask an assistant, with your own AI.** Sign in to a Claude or ChatGPT plan from the app, or connect
   a model on your computer or an API key from any of 29 services. Print watch looks at the camera
-  every few minutes and can pause a failed print; print doctor reads a photo of a bad print. Ask in
+  every few minutes, rates what it sees, explains why and follows your rule for each kind of
+  problem (note it, alert you, pause, or let the AI decide), and you can try it first on a recorded
+  time-lapse; print doctor reads a photo of a bad print. Ask in
   your own words: it reads the printer, files and history, homes, moves and heats by itself, makes and
   slices parts, writes automations, and asks only before it ends a print early. Fixed limits hold
   whatever it is told, only your tap starts a print, and conversations stay on your computer.

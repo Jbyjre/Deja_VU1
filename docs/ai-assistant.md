@@ -119,11 +119,23 @@ model on your own computer keeps all of that at home.
   and reports the time and filament the slicer worked out. To print the result it opens Confirm
   Print, which checks the file first; it cannot start a print itself.
 - **Print watch:** on the AI screen, switch on **Print watch** and your AI looks at the camera every
-  5 to 60 minutes while a real printer prints. If a picture looks wrong it tells you on screen. If
-  you also tick **Pause when it clearly sees a failed print**, it pauses the print through the same
-  checks as the Pause button (watch-only mode still blocks it). Each check sends one camera picture
-  to your AI; the card counts the checks and their cost. Demo printers have a drawn camera, so print
-  watch only runs on real printers.
+  2 to 60 minutes while a real printer prints, with an extra look at the first layers and one near
+  the end. Each look rates what it sees as nothing wrong, a cosmetic flaw, a fixable problem, a
+  failing print or a crash risk, and says why in two or three sentences with how sure it is. Under
+  **Customize**, **What it does about each kind of problem** sets one rule per kind: note it, send
+  an alert, pause and ask you, or let the AI decide. When the AI decides, it says why it chose
+  what it did. A pause goes through the same checks as the Pause button (watch-only mode still
+  blocks it), happens only while the printer prints and, with **Look twice before pausing**, only
+  once a second picture agrees. Print watch can pause a print but never cancels or starts one.
+- **Recent looks:** each look is kept on your computer with the picture it studied (the newest
+  30). Mark a look **Correct** or **Wrong**, or **Ignore things like this**; your last ten marks go
+  with the next looks as examples, so it learns what is normal on your printer. They are sent as
+  examples, never as instructions.
+- **Try it on a recorded time-lapse:** pick a time-lapse video and your browser takes 6, 12 or 24
+  frames from it; your AI judges each one with your rules, as if the print were running. Nothing
+  is paused or sent, and the looks show under Recent looks as rehearsals. Each frame costs the
+  same as one look while printing. Demo printers have a drawn camera, so print watch only runs on
+  real printers; the card counts the looks and their cost.
 - **Print settings:** it suggests settings as a list with the reason. One press puts them in the
   profile editor, and nothing changes until you save the profile.
 - **Explain:** while an AI is connected, cards such as Needs you, Confirm Print, the console and a

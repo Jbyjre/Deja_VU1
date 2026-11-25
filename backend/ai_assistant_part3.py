@@ -4,11 +4,13 @@ prompts and answers) on 19 November 2026, so a session reads only the part it ne
 every name here back, so `ai_assistant.<name>` works as before. Holds: TOOLS, _NEEDS_PRINTER, _WRITES_PRINTER,
 _advance, _carry_out, _check_allowed, _count_usage, _label, _needs_yes, _price_row, _print_watch, _run,
 _settings, _start, _system, _watch_ask, _watch_one, budget, chat, decide, estimate, forget, select, signin,
-status, test, watch_loop, watch_now, watch_once_for_rule, watch_settings, watch_tick, watch_view.
+status, test, watch_judge, watch_look_picture, watch_loop, watch_now, watch_once_for_rule, watch_rehearse,
+watch_settings, watch_tick, watch_view.
 """
 
 import ai_providers
 import ai_signin
+import ai_watch_policy
 import automations
 import cost_calculator
 import filament_inventory
@@ -247,7 +249,8 @@ def forget(provider):
 
 
 def watch_settings(on=None, minutes=None, pause=None, **more):
-    """Print watch's settings. Each one left out stays as it is."""
+    """Print watch's settings. Each one left out stays as it is. `pause` and `notify` are the older switches: they
+    change the policy for failing prints and crash risks (pause) and for every problem worth an alert (notify)."""
     with _lock:
         s = _settings()
         w = s["watch"]
@@ -255,9 +258,27 @@ def watch_settings(on=None, minutes=None, pause=None, **more):
             w["on"] = bool(on)
         if minutes is not None:
             w["minutes"] = int(printer_control._number(minutes, "Minutes", *WATCH_MINUTES))
+        policy = dict(w["policy"])
         if pause is not None:
-            w["pause"] = bool(pause)
-        for key in ("first_layer", "compare", "confirm", "notify"):
+            for k in ("failing", "crash"):
+                if pause:
+                    policy[k] = "pause"
+                elif policy[k] == "pause":
+                    policy[k] = "notify" if "notify" in policy.values() else "note"
+        if more.get("notify") is not None:
+            for k in ("fixable", "failing", "crash"):
+                if more["notify"] and policy[k] == "note":
+                    policy[k] = "notify"
+                elif not more["notify"] and policy[k] == "notify":
+                    policy[k] = "note"
+        if more.get("policy") is not None:
+            sent = more["policy"]
+            if not isinstance(sent, dict) or any(k not in ai_watch_policy.SEVERITIES or v not in ai_watch_policy.ACTIONS
+                                                 for k, v in sent.items()):
+                raise ValueError("For each kind of problem choose: " + ", ".join(ai_watch_policy.ACTIONS))
+            policy.update(sent)
+        w["policy"] = policy
+        for key in ("first_layer", "last_layers", "compare", "confirm"):
             if more.get(key) is not None:
                 w[key] = bool(more[key])
         if more.get("looks") is not None:
@@ -275,7 +296,64 @@ def watch_settings(on=None, minutes=None, pause=None, **more):
     return status()
 
 
-def _watch_ask(st, w, text, pictures):
+def watch_judge(look_id, judged):
+    """The owner marks a look right or wrong, or says to ignore things like it. The next looks get it as an example."""
+    entry = next((e for e in _watch_entries() if e.get("id") == look_id), None)
+    if not entry or entry.get("verdict") == "skipped":
+        raise ValueError("That look isn't in the watch log any more")
+    with _lock:
+        s = _settings()
+        s["watch"]["lessons"] = ai_watch_policy.add_lesson(s["watch"]["lessons"], entry, judged)
+        storage.save_json(_SETTINGS_PATH, s)
+    entry["judged"] = None if judged == "clear" else judged
+    ai_watch_policy.save_log(list(_watch["log"]))
+    return watch_view()
+
+
+def _watch_entries():
+    if not _watch.get("loaded"):
+        _watch["log"][:0] = [e for e in ai_watch_policy.load_log() if e.get("id") not in {x.get("id") for x in _watch["log"]}]
+        _watch["loaded"] = True
+    return _watch["log"]
+
+
+def watch_look_picture(look_id):
+    """The picture one look in the log studied, as (bytes, mime), or None."""
+    return ai_watch_policy.picture(look_id)
+
+
+def watch_rehearse(data_url, label="", printer_name=""):
+    """
+    Try the watch on a frame of a recorded time-lapse (the browser takes the frames from a video): the AI looks and
+    reasons as it would live, and the log says what the policy would have done. Nothing is paused or sent.
+    """
+    st = status()
+    if not st["ready"]:
+        raise ValueError("Connect an AI first")
+    picture = ai_watch_policy.picture_from_upload(data_url)
+    w = _settings()["watch"]
+    label = re.sub(r"\s+", " ", str(label or "")).strip()[:80]
+    text = (f"[Print check: a frame of a recorded time-lapse{f', {label}' if label else ''}] Judge it as if the print were "
+            "running now.")
+    if w["notes"]:
+        text += "\n[The owner's notes]\n" + w["notes"]
+    text += ai_watch_policy.lesson_lines(w["lessons"])
+    more = {}
+    try:
+        verdict, why, confidence = _watch_ask(st, w, text, [picture], more)
+    except Exception as error:
+        raise ValueError(f"The AI didn't answer: {error}") from None
+    action, action_why = ai_watch_policy.choose(w["policy"], more["severity"], more.get("decision"), more.get("decision_why"))
+    entry = {"id": ai_watch_policy.new_id(), "printer": "", "printer_name": str(printer_name or "")[:60] or "Time-lapse",
+             "file": "", "verdict": verdict, "why": why, "paused": False, "reason": f"rehearsal{f': {label}' if label else ''}",
+             "confidence": confidence, "severity": more["severity"], "reasoning": more.get("reasoning", ""),
+             "action": action, "action_why": action_why, "rehearsal": True}
+    ai_watch_policy.keep_picture(entry["id"], picture)
+    entry["picture"] = True
+    return _watch_log(entry)
+
+
+def _watch_ask(st, w, text, pictures, more=None):
     answer = ai_providers.ask(st["provider"], st["model"], _watch_system(w, len(pictures) > 1),
                               [{"role": "user", "text": text, "images": pictures}])
     used = getattr(answer, "usage", None) or {}
@@ -287,11 +365,14 @@ def _watch_ask(st, w, text, pictures):
     if not isinstance(cost, (int, float)):
         cost = _money(_price_row(st["provider"], st["model"]), used.get("in"), used.get("out"))
     u["cost_usd"] = round(u["cost_usd"] + (cost or 0), 6)
-    return _watch_verdict(answer)
+    return _watch_verdict(answer, more)
 
 
 def _watch_one(printer, w, st, reason, wait=None):
-    """One check of one printer: a picture, the AI's verdict, and a pause only once a second picture agrees."""
+    """
+    One check of one printer: a picture, the AI's verdict, severity and reasoning, and what the owner's policy says to
+    do about it (AI.1). A pause happens only while printing and, when "look twice" is on, once a second picture agrees.
+    """
     with mock_moonraker.use_printer(printer):
         state = mock_moonraker.get_printer_state() or {}
         name = state.get("printer_name") or printer
@@ -314,39 +395,54 @@ def _watch_one(printer, w, st, reason, wait=None):
         text += f" The earlier picture is from {max(1, round((time.time() - before['at']) / 60))} minutes ago."
     if w["notes"]:
         text += "\n[The owner's notes]\n" + w["notes"]
+    text += ai_watch_policy.lesson_lines(w.get("lessons"))
+    more = {}
     try:
-        verdict, why, confidence = _watch_ask(st, w, text, pictures)
+        verdict, why, confidence = _watch_ask(st, w, text, pictures, more)
     except Exception as error:
         return {"printer": printer, "printer_name": name, "verdict": "skipped", "reason": reason,
                 "why": f"The AI didn't answer: {error}"}
     _watch["pictures"][printer] = {"picture": picture, "at": time.time(), "verdict": verdict}
-    entry = {"printer": printer, "printer_name": name, "file": file, "verdict": verdict, "why": why, "paused": False,
-             "reason": reason, "confidence": confidence, "progress": progress}
-    if verdict == "failed" and w["pause"] and state.get("state") == "printing":
-        agreed = True
-        if w["confirm"]:
-            (wait or time.sleep)(WATCH_CONFIRM_S)
-            with mock_moonraker.use_printer(printer):
-                again = _snapshot()
-            try:
-                second = _watch_ask(st, w, text + " This is a second look, taken to confirm before pausing.",
-                                    [again] if again else [])[0] if again else "skipped"
-            except Exception:
-                second = "skipped"
-            agreed = second == "failed"
-            entry["confirmed"] = agreed
-            if not agreed:
-                entry["why"] += " A second picture didn't confirm it, so the print was left running."
-        if agreed:
-            ok, result = _carry_out("pause", {}, _ctx(printer, False))
-            entry["paused"] = ok
-            if not ok:
-                entry["why"] += " It was not paused: " + str(result.get("refused") or "")
-    if w["notify"] and verdict in ("worry", "failed"):
+    policy = w.get("policy") or ai_watch_policy.default_policy(w.get("pause"), w.get("notify"))
+    severity = more.get("severity") or {"ok": "none", "worry": "fixable", "failed": "failing"}[verdict]
+    action, action_why = ai_watch_policy.choose(policy, severity, more.get("decision"), more.get("decision_why"))
+    entry = {"id": ai_watch_policy.new_id(), "printer": printer, "printer_name": name, "file": file, "verdict": verdict,
+             "why": why, "paused": False, "reason": reason, "confidence": confidence, "progress": progress,
+             "layer": state.get("layer"), "severity": severity, "reasoning": more.get("reasoning", ""),
+             "action": action, "action_why": action_why}
+    entry["picture"] = ai_watch_policy.keep_picture(entry["id"], picture)
+    if action == "pause":
+        if state.get("state") != "printing":
+            entry["action_why"] += " The printer wasn't printing, so there was nothing to pause."
+        else:
+            agreed = True
+            if w["confirm"]:
+                (wait or time.sleep)(WATCH_CONFIRM_S)
+                with mock_moonraker.use_printer(printer):
+                    again = _snapshot()
+                second = {}
+                try:
+                    second_verdict = _watch_ask(st, w, text + " This is a second look, taken to confirm before pausing.",
+                                                [again] if again else [], second)[0] if again else "skipped"
+                except Exception:
+                    second_verdict = "skipped"
+                # The second look must see trouble at least as clear: a failure for a failing print or a crash risk,
+                # any trouble for a smaller problem the owner chose to pause for.
+                agreed = second_verdict == "failed" if severity in ("failing", "crash") else second_verdict in ("worry", "failed")
+                entry["confirmed"] = agreed
+                if not agreed:
+                    entry["why"] += " A second picture didn't confirm it, so the print was left running."
+            if agreed:
+                ok, result = _carry_out("pause", {}, _ctx(printer, False))
+                entry["paused"] = ok
+                if not ok:
+                    entry["why"] += " It was not paused: " + str(result.get("refused") or "")
+    alert = action == "notify" or (action == "pause" and entry["paused"])
+    if alert:
         try:
-            notifications.notify(f"{name}: print watch says {'it looks failed' if verdict == 'failed' else 'worth a look'}. "
-                                 f"{entry['why']}{' Paused.' if entry['paused'] else ''}",
-                                 "high" if verdict == "failed" else "normal")
+            said = {"failed": "it looks failed", "worry": "worth a look"}.get(verdict, "worth a look")
+            notifications.notify(f"{name}: print watch says {said}. {entry['why']}{' Paused.' if entry['paused'] else ''}",
+                                 "high" if verdict == "failed" or entry["paused"] else "normal")
             entry["alerted"] = True
         except Exception:
             entry["alerted"] = False
@@ -408,7 +504,10 @@ def watch_once_for_rule(printer_id, rule_name, pause):
         raise ValueError("no AI is connected")
     if not modules.is_enabled("camera"):
         raise ValueError("the camera is switched off in Settings")
-    w = dict(_settings()["watch"], pause=bool(pause))
+    w = dict(_settings()["watch"])
+    # The rule says whether this look may pause: failing prints and crash risks pause only if it does.
+    w["policy"] = {**w["policy"], **{k: ("pause" if pause else ("notify" if w["policy"][k] == "pause" else w["policy"][k]))
+                                     for k in ("failing", "crash")}}
     entry = _watch_one(printer_id, w, st, f"automation: {rule_name}"[:80])
     _watch_log(entry)
     return entry
@@ -426,16 +525,17 @@ def watch_loop():
 
 def watch_view():
     s = _settings()
-    return {**s["watch"], "log": list(reversed(_watch["log"][-12:])), "usage": dict(_watch["usage"]),
+    return {**s["watch"], "log": list(reversed(_watch_entries()[-12:])), "usage": dict(_watch["usage"]),
             "looks_known": {k: v.split(" (")[0] for k, v in WATCH_LOOKS.items()},
+            "severities": list(ai_watch_policy.SEVERITIES), "actions": list(ai_watch_policy.ACTIONS),
             "pictures": sorted(_watch["pictures"]), "minutes_range": list(WATCH_MINUTES),
             "next_in_s": {p: max(0, round(at + s["watch"]["minutes"] * 60 - time.time())) for p, at in _watch["last"].items()
                           if at > 0}}
 
 
 def _print_watch(**changes):
-    allowed = {k: changes.get(k) for k in ("on", "minutes", "pause", "first_layer", "compare", "confirm", "notify",
-                                           "looks", "sensitivity", "notes")}
+    allowed = {k: changes.get(k) for k in ("on", "minutes", "pause", "first_layer", "last_layers", "compare", "confirm",
+                                           "notify", "looks", "sensitivity", "notes", "policy")}
     on, minutes, pause = allowed.pop("on"), allowed.pop("minutes"), allowed.pop("pause")
     watch_settings(on, minutes, pause, **allowed)
     return {"print_watch": _settings()["watch"]}
@@ -557,8 +657,9 @@ TOOLS = {
     "automation_toggle": _tool("safe", "Switch an automation rule on or off.", "rule_id, enabled true|false", _automation_toggle),
     "automation_remove": _tool("safe", "Delete an automation rule.", "rule_id",
                                lambda rule_id: {"rules": automations.delete_rule(str(rule_id))}),
-    "print_watch": _tool("safe", "Change print watch.", "on, minutes 2-60, pause, first_layer, compare, confirm, notify, "
-                         "looks [" + ",".join(WATCH_LOOKS) + "], sensitivity relaxed|normal|careful, notes", _print_watch),
+    "print_watch": _tool("safe", "Change print watch.", "on, minutes 2-60, first_layer, last_layers, compare, confirm, "
+                         "looks [" + ",".join(WATCH_LOOKS) + "], sensitivity relaxed|normal|careful, notes, policy "
+                         "{cosmetic|fixable|failing|crash: note|notify|pause|decide}", _print_watch),
     "file_delete": _tool("ask", "Delete a file from the library.", "name", _file_delete),
     "timelapses": _tool("read", "Flipbooks and the printer's own videos.", "", _timelapses),
     "timelapse_keep": _tool("safe", "Keep a printer video here.", "root, path (from timelapses)",

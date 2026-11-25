@@ -73,7 +73,9 @@ API endpoints
   POST /api/assistant/estimate|budget   tokens and cost before sending; the owner's prices and spending limit
   POST /api/assistant/watch          print watch: a camera check by the AI every few minutes while a real printer prints
   POST /api/assistant/watch/now      print watch: look through a real printer's camera now
-  GET  /api/assistant/watch/picture  the last picture print watch studied for ?printer=
+  POST /api/assistant/watch/judge    print watch: mark a look right or wrong, or ignore things like it
+  POST /api/assistant/watch/rehearse print watch: judge one frame of a recorded time-lapse, as if live
+  GET  /api/assistant/watch/picture  the last picture print watch studied for ?printer=, or one look's with ?look=
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
