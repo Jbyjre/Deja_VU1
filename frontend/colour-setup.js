@@ -34,8 +34,10 @@ const ColourSetup = (() => {
     return out + '"';
   }
 
-  /* What is wrong with the Wi-Fi details, in words (an empty list means they can be used). */
-  function problems(v) {
+  /* What is wrong with the Wi-Fi details, in words (an empty list means they can be used). `known` is false while the
+   * app has not yet told this window its addresses and printer (switched off, or still asking): those two are not
+   * judged then, so a fresh window does not open with complaints about things nobody could have typed. */
+  function problems(v, known = true) {
     const list = [];
     const bytes = new TextEncoder().encode(v.ssid || '').length;
     if (!v.ssid) list.push('Type your Wi-Fi name.');
@@ -43,8 +45,9 @@ const ColourSetup = (() => {
     const pass = v.password || '';
     if (pass && pass.length < 8) list.push('A Wi-Fi password is at least 8 characters (leave it empty for an open network).');
     else if (pass.length > 64 || (pass.length === 64 && !/^[0-9a-f]{64}$/i.test(pass))) list.push('A Wi-Fi password is at most 63 characters.');
-    if (!(v.servers || []).length) list.push("Choose this computer's address.");
-    if (!v.printer) list.push('Select an added printer first (not a demo printer).');
+    if (known && !(v.servers || []).length) list.push("Choose this computer's address.");
+    else if ((v.servers || []).length > 4) list.push('The Pico keeps at most four addresses. Untick some.');
+    if (known && !v.printer) list.push('Select an added printer first (not a demo printer).');
     if (v.code && !/^\d{1,12}$/.test(v.code)) list.push('A pairing code is digits only.');
     return list;
   }
@@ -94,8 +97,9 @@ const ColourSetup = (() => {
     st.unassigned = status.unassigned || [];
     if (Number.isInteger(status.server_time)) ColourBridge.setOffset(status.server_time - Math.floor(Date.now() / 1000));
     if (!st.connection || st.connection.printer_id !== currentPrinter) {
-      st.connection = await getJSON(api('/api/colorcheck/connection')).catch(() => null);
-      if (st.connection) renderAddresses();
+      const info = await getJSON(api('/api/colorcheck/connection')).catch(() => null);
+      st.connection = info && !isModuleDisabled(info) ? info : null;
+      if (st.connection) renderAddresses(); else renderPreview();
     }
     if (!sensorFor(st.head) && st.sensors.length) st.head = st.sensors[0].toolhead;
     renderLive();
@@ -118,7 +122,7 @@ const ColourSetup = (() => {
     const c = st.connection;
     if (!c) return;
     const rows = (c.addresses || []).map((a, i) =>
-      `<label class="cs-check"><input type="checkbox" value="${esc(a)}"${i === 0 ? ' checked' : ''}> <span><code>${esc(a)}</code>${i === 0 ? ' <em>(this computer on your home network)</em>' : ''}</span></label>`);
+      `<label class="cs-check"><input type="checkbox" value="${esc(a)}"${i < 3 ? ' checked' : ''}> <span><code>${esc(a)}</code>${i === 0 ? ' <em>(this computer on your home network)</em>' : ' <em>(also this computer: the Pico tries it when the first does not answer)</em>'}</span></label>`);
     if (c.name) rows.push(`<label class="cs-check"><input type="checkbox" value="${esc(c.name)}"> <span><code>${esc(c.name)}</code> <em>(this computer's name, as a spare)</em></span></label>`);
     $('cs-addresses').innerHTML = rows.join('') || '<p class="field-hint">No home-network address was found. Type one below (for example 192.168.1.23:8000).</p>';
     $('cs-lock').hidden = !c.device_lock;
@@ -127,12 +131,12 @@ const ColourSetup = (() => {
 
   function renderPreview() {
     const v = values();
-    const list = problems(v);
+    const list = problems(v, !!st.connection);
     const text = tomlFor(v).replace(/(CIRCUITPY_WIFI_PASSWORD = ).*/, st.showPass ? '$&' : '$1"••••••••"');
     $('cs-toml').textContent = text;
     $('cs-problems').innerHTML = list.map(p => `<li>${esc(p)}</li>`).join('');
     $('cs-problems').hidden = !list.length;
-    document.querySelectorAll('[data-cs-needs-details]').forEach(b => { b.disabled = list.length > 0 || b.dataset.csBusy === '1'; });
+    document.querySelectorAll('[data-cs-needs-details]').forEach(b => { b.disabled = list.length > 0 || !st.connection || b.dataset.csBusy === '1'; });
     renderUsb();
   }
 
@@ -197,7 +201,7 @@ const ColourSetup = (() => {
   const firstFree = () => HEADS.find(h => !sensorFor(h)) || 'T0';
 
   function findHtml() {
-    if (st.moduleOff) return '<p class="cs-line"><span class="cs-dot" data-state="bad"></span>Switch on <strong>Right colour loaded?</strong> in Settings, Optional extras, then come back.</p>';
+    if (st.moduleOff) return '<p class="cs-line"><span class="cs-dot" data-state="wait"></span>Waiting for Right colour loaded? to be switched on (the notice at the top of this window).</p>';
     if (st.simulated) return '<p class="cs-line"><span class="cs-dot" data-state="bad"></span>This is a demo printer. Add your printer first (Printers), then select it.</p>';
     const rows = [];
     for (const d of waiting()) {
@@ -217,7 +221,7 @@ const ColourSetup = (() => {
     if (!rows.length) {
       const waited = Date.now() - st.seenAt;
       rows.push(`<p class="cs-line"><span class="cs-dot" data-state="wait"></span>Waiting for the Pico. Power it from a USB wall charger (or plug it into this computer) and give it up to a minute.</p>` +
-        (waited > 25000 ? `<ul class="cs-list"><li>Is the Pico's own light on? Look at the table below.</li><li>Is Deja Vu1 running on this computer and is this window still open?</li><li>Windows may have asked to let Python use private networks: choose Allow, then restart Deja Vu1.</li><li>The Pico W cannot join a 5 GHz-only network.</li><li>Try the USB cable route (step 1): it shows what the Pico says in words.</li></ul>` : ''));
+        (waited > 25000 ? `<ul class="cs-list"><li>Is the Pico's own light on? Look at the table below.</li><li>Is Deja Vu1 running on this computer and is this window still open?</li><li>Open this computer's address from a phone on the same Wi-Fi. If the page does not load, this computer's firewall is blocking it: the guide's section Let the Pico reach this computer has the steps.</li><li>The Pico W cannot join a 5 GHz-only network.</li><li>Try the USB cable route (step 1): it shows what the Pico says in words.</li></ul>` : ''));
     }
     return rows.join('');
   }
@@ -285,6 +289,7 @@ const ColourSetup = (() => {
   function renderLive() {
     if (!$('colour-setup').open) return;
     const sensor = sensorFor(st.head);
+    paint($('cs-module-live'), st.moduleOff ? '<div class="cs-notice"><p class="cs-line"><span class="cs-dot" data-state="bad"></span><span><strong>Right colour loaded?</strong> is switched off (Settings, Optional extras). Nothing below works until it is on.</span></p><button type="button" class="btn small primary" data-turn-on="color_check">Turn it on</button></div>' : '');
     if (!document.activeElement || !document.activeElement.closest('#cs-find-live select')) paint($('cs-find-live'), findHtml());
     paint($('cs-bars'), barsHtml(sensor));
     paint($('cs-test-live'), testHtml());
@@ -404,10 +409,91 @@ const ColourSetup = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  /* -- a report to paste into a message ---------------------------------------------------------------------------- */
+
+  /* Plain text with what this window, the app and the Pico say, for whoever helps. Whatever is in `secrets` (the Wi-Fi
+   * name, the password, a pairing code) is blanked wherever it shows up, because the Pico's own sentences can name the
+   * Wi-Fi. Kept as English on purpose: it goes to a person who may not read the app's language. */
+  function diagnosticsText(d) {
+    const out = [];
+    const line = text => out.push(text);
+    const one = (value, none = 'unknown') => (value === undefined || value === null || value === '' ? none : String(value));
+    const c = d.connection || {};
+    const usb = d.usb || {};
+    const hello = usb.hello || null;
+    const net = (hello && hello.net) || usb.net || null;
+    line(`Deja Vu1 colour checker report, ${one(d.when)}`);
+    line(`Deja Vu1 ${one(d.version)}; the colour checker firmware this build offers: ${one(d.firmware)}`);
+    line(`Right colour loaded? switched ${d.moduleOff ? 'OFF' : 'on'}; ${d.simulated ? 'a demo printer is selected' : 'a real printer is selected'} (${one(c.printer_id)})`);
+    line(`Addresses this computer offers the Pico: ${(c.addresses || []).join(', ') || 'none found'}; its name ${one(c.name, 'none')}; device lock ${c.device_lock ? 'on' : 'off'}`);
+    line(`Window steps: ${(d.marks || []).map(([key, state]) => `${key} ${one(state)}`).join(', ')}`);
+    const sensors = d.sensors || [];
+    line(`Sensors with a head: ${sensors.length}`);
+    for (const x of sensors) {
+      const r = x.reading || {};
+      const set = r.settings || {};
+      const info = r.info || {};
+      const cal = x.calibration || {};
+      const cmd = x.command;
+      line(`- ${one(x.toolhead)}: ${one(x.device_id)} / ${one(x.channel_id)} / ${one(x.sensor_id)}; ${one(x.status)}, ${x.age_s == null ? 'no reading' : `reading ${x.age_s} s old`}; ` +
+        `via ${one(info.transport)}${info.rssi ? ` ${info.rssi} dBm` : ''}, firmware ${one(info.firmware)}; gain ${one(set.gain)}, light ${one(set.led_ma)} mA, flags ${(r.quality_flags || []).join(' ') || 'none'}; ` +
+        `calibration ${one(cal.state)}${cal.message ? ` (${cal.message})` : ''}${cmd ? `; last command ${one(cmd.cmd)} ${one(cmd.state)}: ${one(cmd.message, '')}` : ''}`);
+    }
+    const waiting = d.unassigned || [];
+    line(`Sensors waiting for a head: ${waiting.length}`);
+    for (const x of waiting) {
+      const info = x.info || {};
+      line(`- ${one(x.device_id)} / ${one(x.channel_id)}; ${Math.round(Number(x.age_s) || 0)} s ago; via ${one(info.transport)}${info.rssi ? ` ${info.rssi} dBm` : ''}, firmware ${one(info.firmware)}`);
+    }
+    line(`USB: web serial ${d.serialSupported ? 'available' : 'not available here'}; ${one(usb.status, 'not connected')}${usb.message ? ` ("${usb.message}")` : ''}; readings posted by this page ${one(usb.posted, 0)}; last refusal ${one(usb.refused, 'none')}`);
+    if (hello) line(`Pico over USB: ${one(hello.device_id)}, firmware ${one(hello.firmware)}, sensor ${hello.sensor_ready ? 'answering' : 'NOT answering'}`);
+    if (net) {
+      line(`Pico's Wi-Fi: ${net.ssid ? 'details saved' : 'no details saved'} (from ${one(net.source)}); joined ${net.joined ? 'yes' : 'no'}; state ${one(net.state)}; address ${one(net.ip, 'none')}; ` +
+        `signal ${one(net.rssi, 'none')}; app address(es) ${(net.server || []).join(', ') || 'none'}; paired ${net.paired ? 'yes' : 'no'}`);
+      if (net.message) line(`Pico says: ${net.message}`);
+    }
+    if (d.test && d.test.result) line(`Channel test: ${d.test.result.ok ? 'every band reacted' : `no reaction in ${(d.test.result.silent || []).join(', ')}`}`);
+    if (d.gainNote) line(`Brightness: ${d.gainNote.ok ? 'ok' : 'failed'}: ${one(d.gainNote.message, '')}`);
+    let text = out.join('\n') + '\n';
+    for (const secret of (d.secrets || []).filter(x => typeof x === 'string' && x.length >= 3)) text = text.split(secret).join('<hidden>');
+    return text;
+  }
+
+  async function collectDiagnostics() {
+    const [status, alive, connection] = await Promise.all([
+      getJSON(api('/api/colorcheck/sensors')).catch(() => null),
+      getJSON('/api/app/alive').catch(() => null),
+      getJSON(api('/api/colorcheck/connection')).catch(() => null)]);
+    let firmware = null;
+    try { const match = /FIRMWARE = "([^"]+)"/.exec(await (await fetch('colour-checker/code.py')).text()); firmware = match && match[1]; } catch (_) { /* a static host without the file */ }
+    const bridge = ColourBridge.state;
+    const field = id => ($(id) ? $(id).value : '');
+    return {
+      when: new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC', version: alive && alive.version, firmware,
+      moduleOff: !!(status && isModuleDisabled(status)), simulated: !!(status && status.simulated),
+      connection: connection && !isModuleDisabled(connection) ? connection : st.connection,
+      marks: ['connect', 'find', 'test', 'gain', 'cal', 'done'].map(key => [key, $(`cs-mark-${key}`) ? $(`cs-mark-${key}`).dataset.state : '']),
+      sensors: (status && status.sensors) || st.sensors, unassigned: (status && status.unassigned) || st.unassigned,
+      usb: { status: bridge.status, message: bridge.message, hello: bridge.hello, net: bridge.net, posted: bridge.posted, refused: bridge.refused },
+      serialSupported: ColourBridge.supported(), test: st.test, gainNote: st.notes.gain,
+      secrets: [field('cs-ssid'), field('cs-pass'), field('cs-code'), ((bridge.hello && bridge.hello.net) || bridge.net || {}).ssid],
+    };
+  }
+
+  async function copyReport() {
+    const text = diagnosticsText(await collectDiagnostics());
+    const box = $('cs-report-text');
+    box.textContent = text;
+    box.hidden = false;
+    try { await navigator.clipboard.writeText(text); toast('Report copied. Paste it into your message.', 'ok', 4000); }
+    catch (_) { toast('Your browser would not copy. Select the text shown under the button instead.', 'bad', 6000); }
+  }
+
   /* -- the window ---------------------------------------------------------------------------------------------------- */
 
   function bodyHtml() {
     return `
+    <div id="cs-module-live" class="cs-live" role="status"></div>
     <ol class="cs-steps">
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-connect" data-state="todo"></span>Give the Pico your Wi-Fi details, or plug it in</h3>
         <p class="field-hint">Put the Pico W beside the black block, within the sensor's 20 cm cable, and power it from a USB wall charger. Never from the printer. Choose any of these ways; they can be mixed.</p>
@@ -448,6 +534,11 @@ const ColourSetup = (() => {
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-find" data-state="todo"></span>Find the sensor and give it a head</h3>
         <div id="cs-find-live" class="cs-live"></div>
         <details class="cs-way"><summary>What the Pico's own light means</summary><table class="cs-led"><tbody>${LEDS.map(([a, b]) => `<tr><th scope="row">${esc(a)}</th><td>${esc(b)}</td></tr>`).join('')}</tbody></table></details>
+        <details class="cs-way"><summary>If nothing works: copy a report to send</summary>
+          <p class="field-hint">Gathers what this window, Deja Vu1 and the Pico say, so you can paste it into a message instead of describing it. It holds no Wi-Fi name, password or pairing code.</p>
+          <div class="field-row"><button type="button" class="btn small" id="cs-report">Copy the report</button></div>
+          <pre class="cs-toml" id="cs-report-text" hidden></pre>
+        </details>
       </li>
       <li class="cs-step"><h3><span class="cs-mark" id="cs-mark-test" data-state="todo"></span>Test the channels</h3>
         <div id="cs-bars" class="cs-live"></div><div id="cs-test-live" class="cs-live"></div>
@@ -521,6 +612,7 @@ const ColourSetup = (() => {
       const r = await runCommand({ cmd: 'set', gain: Number($('cs-g-gain').value), led_ma: Number($('cs-g-led').value) });
       note.textContent = r.ok ? 'Done: the sensor uses the new settings from its next reading.' : r.message;
     });
+    $('cs-report').addEventListener('click', copyReport);
     $('cs-b-take').addEventListener('click', takeBench);
     $('cs-b-download').addEventListener('click', downloadBench);
     $('cs-b-again').addEventListener('click', () => { st.bench.insertion = Math.min(99, st.bench.insertion + 1); $('cs-b-insertion').textContent = `Insertion ${st.bench.insertion}`; });
@@ -568,6 +660,6 @@ const ColourSetup = (() => {
   }
   document.addEventListener('DOMContentLoaded', bindCard);
 
-  return { open, tomlString, tomlFor, problems, channelVerdict, bindCard, state: st };
+  return { open, tomlString, tomlFor, problems, channelVerdict, diagnosticsText, bindCard, state: st };
 })();
 window.ColourSetup = ColourSetup;
