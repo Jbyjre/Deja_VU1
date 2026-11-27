@@ -249,7 +249,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background
   the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
   Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
   Backup restore and an update install.
-- **Automated:** 2350 tests passed on Python 3.13 (27 November 2026). GitHub Actions
+- **Automated:** 2352 tests passed on Python 3.13 (27 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
   Snapmaker Orca v2.4.1 on Linux and Windows.
@@ -293,7 +293,7 @@ spool has been measured. [The guide](docs/colour-checker.md)
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 2350 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2352 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 
