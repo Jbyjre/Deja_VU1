@@ -55,5 +55,31 @@ class TestTheColourSetup(unittest.TestCase):
             self.assertIn(line, self.out)
 
 
+@unittest.skipUnless(_browser_ready(), "Node, Playwright for Node and a Chromium are needed")
+class TestTheSetupIsEasyToFind(unittest.TestCase):
+    """The setup opens from the Filament screen's toolbar, from the Right colour loaded? card, from the search bar and from
+    Settings, Optional extras, all with the module off. A browser session of its own, so it cannot disturb the long journey."""
+
+    @classmethod
+    def setUpClass(cls):
+        done = subprocess.run(["node", TOOL, "--only", "entry"], capture_output=True, timeout=300, cwd=ROOT)
+        cls.out = done.stdout.decode("utf-8", "replace") + done.stderr.decode("utf-8", "replace")
+        cls.code = done.returncode
+
+    def test_every_check_passed(self):
+        self.assertEqual(self.code, 0, self.out[-3000:])
+        self.assertNotIn("FAIL", self.out)
+
+    def test_each_place_that_offers_the_setup_opened_the_window(self):
+        for line in ("the toolbar of the Filament screen offers Set up the colour checker with the module off",
+                     "the toolbar button opens the window, which offers to turn the module on",
+                     "the Right colour loaded? card shows Set up the colour checker with the module off",
+                     "the search bar (Ctrl+K) lists Set up the colour checker",
+                     "choosing it in the search bar opens the window",
+                     "Settings, Optional extras has a Set up button on the colour checker row",
+                     "the Optional extras button opens the window"):
+            self.assertIn(line, self.out)
+
+
 if __name__ == "__main__":
     unittest.main()

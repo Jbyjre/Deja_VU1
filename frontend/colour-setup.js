@@ -659,6 +659,8 @@ const ColourSetup = (() => {
     if (button && !button.dataset.bound) { button.dataset.bound = '1'; button.addEventListener('click', () => open(button)); }
   }
   document.addEventListener('DOMContentLoaded', bindCard);
+  // Any control marked data-colour-setup (the Optional extras row) opens the window.
+  document.addEventListener('click', e => { const button = e.target.closest && e.target.closest('[data-colour-setup]'); if (button) open(button); });
 
   return { open, tomlString, tomlFor, problems, channelVerdict, diagnosticsText, bindCard, state: st };
 })();

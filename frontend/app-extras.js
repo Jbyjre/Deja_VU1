@@ -34,6 +34,7 @@ async function loadModules() {
         <div class="mod-name">${esc(m.name)}</div>
         <div class="mod-desc">${esc(m.description)}</div>
       </div>
+      ${m.id === 'color_check' ? '<button type="button" class="btn small mod-setup" data-colour-setup>Set up</button>' : ''}
       <span class="mod-saving" aria-live="polite"></span>
       <label class="switch" style="gap:0;">
         <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}" aria-label="${esc(m.name)}">

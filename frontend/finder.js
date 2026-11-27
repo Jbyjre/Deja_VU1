@@ -103,6 +103,7 @@ window.Finder = (() => {
     ['Show me this screen', 'Do', 'tour tips guide this screen walk through help', () => { const t = document.body.dataset.tab; if (window.Guide && Guide.has(t)) Guide.screen(t); else toast('This screen has no extra tips', 'info'); }],
     ['Hints: I know my way around', 'Do', 'experience hints words text less explainers expert', () => window.DVTheme && DVTheme.setExperience('know')],
     ['Hints: New to 3D printing', 'Do', 'experience hints words text more explainers beginner new', () => window.DVTheme && DVTheme.setExperience('new')],
+    ['Set up the colour checker', 'Do', 'colour color checker sensor pico wifi wi-fi usb setup set up connect spool match as7341 right colour loaded', () => window.ColourSetup && ColourSetup.open(null)],
     ['Open the camera', 'Do', 'camera live view webcam watch', () => go('#pp-camera-card')],
     ['Ask the assistant', 'Do', 'ai assistant chat ask help claude chatgpt codex gemini grok api key explain', () => window.Assistant && Assistant.open()],
     ['Keyboard shortcuts', 'Do', 'keyboard shortcuts keys hotkeys go to power user fast', () => window.Rail && Rail.keys && Rail.keys()],
