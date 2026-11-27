@@ -136,6 +136,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.52 (27 November 2026): Find the colour checker's setup from the Filament toolbar, the search bar and...
+
+- Find the colour checker's setup from the Filament toolbar, the search bar and Settings, with the module off or demo data on
+
 ## 0.20.51 (27 November 2026): Colour checker guide: plainer wording in four sentences
 
 - Colour checker guide: plainer wording in four sentences

@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.52",
+      "date": "2026-11-27",
+      "name": "Find the colour checker's setup from the Filament toolbar, the search bar and...",
+      "published": true,
+      "summary": "Find the colour checker's setup from the Filament toolbar, the search bar and Settings, with the module off or demo data on.",
+      "changes": [
+        "Find the colour checker's setup from the Filament toolbar, the search bar and Settings, with the module off or demo data on"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.51",
       "date": "2026-11-27",
       "name": "Colour checker guide: plainer wording in four sentences",
