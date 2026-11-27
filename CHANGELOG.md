@@ -134,6 +134,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.51 (27 November 2026): Colour checker guide: plainer wording in four sentences
+
+- Colour checker guide: plainer wording in four sentences
+
 ## 0.20.50 (27 November 2026): Set up the colour checker from one window, send a report when it does not wor...
 
 - Set up the colour checker from one window, send a report when it does not work, and keep the Pico running after a fault

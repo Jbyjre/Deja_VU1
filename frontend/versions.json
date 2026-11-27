@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.51",
+      "date": "2026-11-27",
+      "name": "Colour checker guide: plainer wording in four sentences",
+      "published": true,
+      "summary": "Colour checker guide: plainer wording in four sentences.",
+      "changes": [
+        "Colour checker guide: plainer wording in four sentences"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.50",
       "date": "2026-11-27",
       "name": "Set up the colour checker from one window, send a report when it does not wor...",
