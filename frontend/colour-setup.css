@@ -83,3 +83,4 @@
 }
 @media (prefers-reduced-motion: reduce) { .cs-fill { transition: none; } }
 @media (prefers-contrast: more) { .cs-way, .cs-ways > div, .cs-fieldset, .cs-toml { border-color: var(--text-dim); } }
+.modrow .mod-setup { flex: none; }

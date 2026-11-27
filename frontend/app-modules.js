@@ -240,8 +240,8 @@ async function loadColorCheck() {
     return;
   }
   $('colour-sensor-state').textContent = data.simulated ? 'Demo readings' : 'No sensor';
-  // Setting up needs an added printer: a demo printer cannot have a physical sensor.
-  $('colour-setup-bar').hidden = !!data.simulated || isModuleDisabled(data);
+  // Always shown: the window itself says what is missing (the module off, a demo printer) and turns the module on.
+  $('colour-setup-bar').hidden = false;
   if (typeof ColourSetup !== 'undefined') ColourSetup.bindCard();
 
   if (isModuleDisabled(data)) {

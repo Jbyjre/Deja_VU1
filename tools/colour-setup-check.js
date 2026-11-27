@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* Browser check of the colour checker's setup window, end to end on this computer.
  *
- *   node tools/colour-setup-check.js [--shots <folder>] [--only wifi|usb|toml|first-run]
+ *   node tools/colour-setup-check.js [--shots <folder>] [--only wifi|usb|toml|first-run|entry]
+ *
+ * `--only entry` is its own run (the test wrapper starts it separately): it opens the window from the toolbar, the card, the search bar
+ * and Settings with the module off, in a browser session of its own.
  *
  * Starts the real server and a stand-in printer (tools/stand-in-printer.py), then the real firmware file as a
  * stand-in Pico (tools/colour_pico_sim.py) that posts over a real socket, and drives the setup window in Chromium:
@@ -151,6 +154,46 @@ async function main() {
       check(out.file.includes('CIRCUITPY_WIFI_PASSWORD = "p\\"w\\\\"') && out.file.includes('DV1_SERVER = "192.168.1.23:8000, laptop.local:8000"') && !out.file.includes('DV1_PAIR_CODE'), 'settings.toml holds the name, password, addresses and printer');
       check(out.bad === 5 && out.good === 0, 'incomplete Wi-Fi details are listed in words and complete ones are not');
       check(/32 characters/.test(out.long), 'a Wi-Fi name over 32 bytes is refused in words');
+    }
+
+    if (only === 'entry') {
+      /* The setup is easy to find: with the module off, every place that offers it is there and opens the window. */
+      await post('/api/modules/color_check/toggle', { enabled: false });
+      await page.evaluate(() => { location.hash = '#/filament'; });
+      const toolbar = page.locator('[data-pb="colour-setup"]');
+      await toolbar.waitFor({ state: 'visible', timeout: 20000 });
+      check(/Set up the colour checker/.test(await toolbar.innerText()), 'the toolbar of the Filament screen offers Set up the colour checker with the module off');
+      await toolbar.click();
+      await page.locator('#colour-setup[open]').waitFor({ timeout: 10000 });
+      check(await page.locator('#cs-module-live [data-turn-on]').waitFor({ timeout: 10000 }).then(() => true, () => false), 'the toolbar button opens the window, which offers to turn the module on');
+      await page.locator('#colour-setup-close').click();
+      await page.evaluate(() => Sections.reveal(document.getElementById('colors')));
+      await page.waitForTimeout(500);
+      check(await page.locator('#colour-setup-open').isVisible(), 'the Right colour loaded? card shows Set up the colour checker with the module off');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-entry-filament.png') });
+      await page.locator('#feature-search').fill('colour checker');
+      const hit = page.locator('.fx-item', { hasText: 'Set up the colour checker' }).first();
+      await hit.waitFor({ timeout: 10000 });
+      check(await hit.isVisible(), 'the search bar (Ctrl+K) lists Set up the colour checker for "colour checker"');
+      await hit.click();
+      await page.locator('#colour-setup[open]').waitFor({ timeout: 10000 });
+      check(true, 'choosing it in the search bar opens the window');
+      await page.locator('#colour-setup-close').click();
+      await page.evaluate(() => { location.hash = '#/settings'; });
+      await page.waitForTimeout(800);
+      const row = page.locator('[data-mod-row="color_check"] [data-colour-setup]');
+      await row.waitFor({ state: 'attached', timeout: 20000 });
+      await page.evaluate(() => Sections.reveal(document.getElementById('module-list')));
+      await page.waitForTimeout(500);
+      await row.scrollIntoViewIfNeeded();
+      check(await row.isVisible(), 'Settings, Optional extras has a Set up button on the colour checker row');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-entry-settings.png') });
+      await row.click();
+      await page.locator('#colour-setup[open]').waitFor({ timeout: 10000 });
+      check(true, 'the Optional extras button opens the window');
+      await page.locator('#colour-setup-close').click();
+    
+      await post('/api/modules/color_check/toggle', { enabled: true });
     }
 
     if (!only || only === 'first-run') {

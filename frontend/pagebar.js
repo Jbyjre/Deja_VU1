@@ -49,6 +49,7 @@
   const ACTIONS = {
     printer: [{ key: 'pause', mirror: 'ctrl-pause-resume', cls: 'primary' }, { key: 'cancel', mirror: 'ctrl-cancel', cls: 'danger' }],
     printers: [{ key: 'add-printer', label: 'Add printer', cls: 'primary', run: openAddPrinter }],
+    filament: [{ key: 'colour-setup', label: 'Set up the colour checker', title: 'Connect the colour checker (a Pico W with a colour sensor) to this computer', cls: 'primary', run: () => { if (window.ColourSetup) ColourSetup.open(null); } }],
     files: [{ key: 'convert', label: 'Bambu to U1 profiles', title: 'Turn a Bambu Studio or other slicer project into Snapmaker U1 profiles', run: () => { const f = $('cv-file'); if (f) f.click(); } },
       { key: 'add-files', label: 'Add files', cls: 'primary', run: () => { const f = $('file-upload'); if (f) f.click(); } }]
   };
