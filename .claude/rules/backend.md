@@ -164,7 +164,13 @@ slicing and launcher files have their own notes in this folder.
   cannot keep the server running. `colour_bench.py` records labelled bench samples (routes `/api/colorcheck/bench`, `bench/delete`) and holds the sums;
   `tools/colour-bench.py` reports. It must never quote a rate from fewer than `MIN_SPOOLS` spools and counts spools, not readings.
   `tools/colour_pico_sim.py` runs the real firmware file on a computer against stand-in modules; `tools/colour-holder.py` writes the STL parts.
-  Unverified on hardware: everything above runs only against stand-ins.
+  **Firmware 1.0.1 (27 November 2026):** `Checker.safe_step` reports an unexpected exception once as an `error` line with code `crash` and carries on; `CRASH_LIMIT` (5) in a row call
+  `supervisor.reload()` (Ctrl-C still stops it: `KeyboardInterrupt` is not an `Exception`). Loops are timed with `mono_ms()` (an integer), never the float `time.monotonic()`. A reply that is not
+  a JSON object counts as empty, and `Link.sync` calls an answer without `server_time` "not Deja Vu1" (a wrong port). **A reading's stamp is `max(offset + now, last + 1)`, so readings
+  must be at least a whole second apart: a harness that runs the period under 1 s makes the app answer "the sensor's clock is ahead".** `tools/colour_micropython_run.py` runs the firmware under
+  MicroPython with `tools/mp_shim/` (its stand-in modules; MicroPython has no `ConnectionError` and its `sys.stdin` cannot be replaced, so commands go through `run_line`).
+  `tests/test_colour_lan.py` reaches the server at this computer's network address (the device lock only lets loopback in, so that is the Pico's real case).
+  Unverified on hardware: everything above runs only against stand-ins. The firmware's calls were compared with CircuitPython 10.3.2's source and `adafruit_as7341` 1.2.27's source.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
 

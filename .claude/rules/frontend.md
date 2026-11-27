@@ -196,6 +196,9 @@ code can sit in more than one part: search the family (`grep -n "function render
   only when its sensor has a head and the Pico is not already sending by Wi-Fi). `ColourSetup` makes `settings.toml` (`tomlString`, `tomlFor`, `problems`),
   lists sensors that wait for a head (Wi-Fi ones from the server, a USB one from the cable), runs the channel test, brightness (a command: over USB it is answered
   at once, over Wi-Fi it rides the next reading), the references and the bench. **The Wi-Fi password is used in this window only: never send it to a route.**
+  A switched-off module shows a notice at the top (`#cs-module-live`; its button uses the global `[data-turn-on]` handler) and the address and printer problems wait until the app has answered
+  (`problems(v, known)`; the module-off answer is not connection info). Up to three of this computer's addresses start ticked (the Pico keeps four, `problems` refuses more). **Copy the report**
+  (`diagnosticsText`, `collectDiagnostics`) writes plain English for a message and blanks the Wi-Fi name, password and pairing code wherever they appear: add every new private field to `secrets`.
   `tools/colour-setup-check.js` drives all of it with the real firmware as a stand-in Pico and a fake `navigator.serial`.
 - `printer-page.js` + `printer.css`: the Printer page, the Overview cards, the camera view (`.pcam`,
   at most five pictures a second, only while visible) and Preferences.

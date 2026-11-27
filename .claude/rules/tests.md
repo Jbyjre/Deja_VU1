@@ -14,7 +14,9 @@ paths:
   server and one shared simulated clock), `tests/test_sensor_settings.py` and `tests/test_sensor_wifi.py` (the server side), `tests/test_colour_holder.py`
   (the STL parts: closed meshes, the light path, no wall under 0.8 mm), `tests/test_colour_bench.py` (recording, the sums, the rules against overclaiming),
   `tests/test_colour_checker_files.py` and `tests/test_colour_setup_browser.py` (runs `node tools/colour-setup-check.js`: the setup window, a fake USB port,
-  Confirm Print and the bench; skipped without Node, Playwright and Chromium). Nothing there ran on a real Pico W.
+  Confirm Print and the bench; skipped without Node, Playwright and Chromium). Three more skip where their tool is missing: `tests/test_colour_lan.py` (no network address besides
+  loopback), `tests/test_colour_micropython.py` (no `micropython` program; `sudo apt install micropython`, 1.22.1 was used) and `tests/test_colour_library_contract.py` (set
+  `DEJAVU_AS7341_SOURCE` to `adafruit_as7341.py`; `pip download adafruit-circuitpython-as7341 --no-deps --no-binary :all:`). Nothing there ran on a real Pico W.
 - Standard-library `unittest`. API tests start the real server on a spare port. Tests use
   simulated printers, temporary folders and `tests/fake_moonraker.py` (a Moonraker stand-in built
   from Moonraker's source); none contacts a physical printer.
