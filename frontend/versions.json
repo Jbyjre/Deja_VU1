@@ -6,6 +6,24 @@
   },
   "versions": [
     {
+      "version": "0.20.50",
+      "date": "2026-11-27",
+      "name": "Set up the colour checker from one window, send a report when it does not wor...",
+      "published": true,
+      "summary": "Set up the colour checker from one window, send a report when it does not work, and keep the Pico running after a fault.",
+      "changes": [
+        "Set up the colour checker from one window, send a report when it does not work, and keep the Pico running after a fault"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.49",
       "date": "2026-11-25",
       "name": "Set up the colour checker over Wi-Fi, print its holder and bench-test your sp...",
