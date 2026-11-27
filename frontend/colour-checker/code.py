@@ -17,11 +17,15 @@
 # It also prints a plain line for people watching the console. The protocol is described in
 # docs/colour-sensor-api.md. The board's own LED says what the Wi-Fi is doing (see LED_HELP below).
 #
+# A Pico on a wall charger has nobody to press a button, so nothing unexpected may leave it stopped: a failure is
+# reported (an "error" line with the code "crash") and the program carries on; five in a row start it again.
+#
 # Raw counts only: this file never turns counts into a colour. Deja Vu1 does that from a white and a
 # dark reference you record, and it ties each reference to the settings in "settings" below.
 #
 # CircuitPython floats are single precision, so this file never holds a Unix time as a float: it counts
 # whole seconds as integers.
+import gc
 import json
 import os
 import sys
@@ -43,7 +47,7 @@ try:
 except ImportError:
     digitalio = None
 
-FIRMWARE = "1.0.0"
+FIRMWARE = "1.0.1"
 PROTOCOL = 1
 
 # -- Settings you may edit ------------------------------------------------------------------------------
@@ -65,6 +69,7 @@ HTTP_TIMEOUT_S = 6  # how long to wait for the app before trying its next addres
 WIFI_TIMEOUT_S = 15  # how long one try at joining the Wi-Fi may take
 WIFI_RETRY_S = 20  # wait this long between tries at joining the Wi-Fi
 CLOCK_REFRESH_S = 600  # ask the app for the time again this often
+CRASH_LIMIT = 5  # this many unexpected failures in a row and the program starts again by itself
 NET_HOLD_S = 10  # after a failed try, leave the app alone this long, so the readings keep their pace
 DEFAULT_APP_PORT = 8000
 # The board's own LED (Pico W) says what the Wi-Fi is doing. Counted in blinks, repeated after each reading:
@@ -143,6 +148,21 @@ def mono_seconds():
         return time.monotonic_ns() // 1000000000
     except AttributeError:
         return int(time.monotonic())
+
+
+def mono_ms():
+    """Whole milliseconds from a clock that never goes back. An integer: a float clock loses its precision after days."""
+    try:
+        return time.monotonic_ns() // 1000000
+    except AttributeError:
+        return int(time.monotonic() * 1000)
+
+
+def restart():
+    """Start the program again (the same as a Ctrl-D at the console). A Pico on a charger has nobody to press anything."""
+    reload = getattr(supervisor, "reload", None)
+    if reload:
+        reload()
 
 
 def getenv(name):
@@ -306,18 +326,18 @@ class Link:
         servers = self.net["server"]
         if not servers:
             raise OSError("No address for Deja Vu1 is set (DV1_SERVER).")
-        failure = None
+        failures = []
         for turn in range(len(servers)):
             index = (self.server + turn) % len(servers)
             host, port = servers[index]
             try:
                 answer = self._call(host, port, method, path, body, cookie)
             except OSError as error:
-                failure = "%s:%d (%s)" % (host, port, error)
+                failures.append("%s:%d (%s)" % (host, port, error))
                 continue
             self.server = index
             return answer
-        raise OSError("No answer from " + failure)
+        raise OSError("; ".join(failures))
 
     def _call(self, host, port, method, path, body, cookie):
         address = host
@@ -353,15 +373,20 @@ class Link:
         split = text.find(b"\r\n\r\n")
         if split < 0 or not text.startswith(b"HTTP/"):
             raise OSError("not an answer from Deja Vu1")
-        lines = text[:split].decode().split("\r\n")
+        try:
+            lines = text[:split].decode().split("\r\n")
+            status = int(lines[0].split(" ")[1])
+        except (IndexError, ValueError):  # a UnicodeError is a ValueError
+            raise OSError("not an answer from Deja Vu1")
         headers = {}
         for line in lines[1:]:
             name, _, value = line.partition(":")
             headers.setdefault(name.strip().lower(), value.strip())
-        status = int(lines[0].split(" ")[1])
         try:
             parsed = json.loads(text[split + 4:].decode()) if text[split + 4:] else {}
         except (ValueError, UnicodeError):
+            parsed = {}
+        if not isinstance(parsed, dict):  # something else answers on that port: treat it as an empty answer
             parsed = {}
         return status, headers, parsed
 
@@ -370,7 +395,10 @@ class Link:
         for line in head.decode().split("\r\n")[1:]:
             name, _, value = line.partition(":")
             if name.strip().lower() == "content-length":
-                return int(value.strip())
+                try:
+                    return int(value.strip())
+                except ValueError:
+                    return None
         return None
 
     def stamp(self):
@@ -393,13 +421,17 @@ class Link:
             status, _, data = self.request("GET", path)
         if status == 200:
             self.learn_time(data.get("server_time"))
-            return self.offset is not None
+            if self.offset is None:  # an answer without the app's time is not the app's
+                self.set("refused", "Something answered at that address, but it is not Deja Vu1 (it sent no time). "
+                         "Check the address and port in DV1_SERVER.")
+                return False
+            return True
         self.refused(status, data)
         return False
 
     def refused(self, status, data):
-        words = str(data.get("error") or "") if isinstance(data, dict) else ""
-        if status == 401 and isinstance(data, dict) and data.get("pairing_required"):
+        words = str(data.get("error") or "")
+        if status == 401 and data.get("pairing_required"):
             self.set("refused", "Deja Vu1's device lock is on and this sensor is not paired. " + (
                 "The pairing code was not accepted. " if self.net["code"] else "") +
                 "Show a pairing code (Settings, Pair a phone) and send it from the setup screen.")
@@ -456,17 +488,17 @@ class Link:
             return self.answer(status, data)
         except OSError as error:
             self.failed_at = mono_seconds()
-            where = ", ".join("%s:%d" % pair for pair in self.net["server"])
-            self.set("unreachable", "Could not reach Deja Vu1 at %s (%s). Is it running on the computer, on the same "
-                     "Wi-Fi, with Python allowed through the firewall?" % (where, error))
+            self.set("unreachable", "Could not reach Deja Vu1: no answer from %s. Is it running on the computer, on the "
+                     "same Wi-Fi, with Python allowed through the firewall?" % error)
             return None
 
     def answer(self, status, data):
         if status == 200:
             self.learn_time(data.get("server_time"))
             self.set("ok", "Readings are reaching Deja Vu1.")
-            return data.get("commands") or []
-        words = str(data.get("error") or "") if isinstance(data, dict) else ""
+            commands = data.get("commands")
+            return [c for c in commands if isinstance(c, dict)] if isinstance(commands, list) else []
+        words = str(data.get("error") or "")
         if status == 400 and "repeated or older" in words:
             self.last_stamp += 2  # a reading with the same second: skip it, the next one is later
             return []
@@ -491,9 +523,10 @@ class Checker:
         self.settled = False
         self.count = 0
         self.problem = None
-        self.problem_at = 0.0
+        self.problem_at = 0
         self.line = ""
         self.link = Link()
+        self.failures = 0  # unexpected failures in a row (safe_step)
         self.pending_result = None  # the answer to the last command that came by Wi-Fi, sent with the next reading
         self.reported_state = None
         self.led = None
@@ -748,7 +781,7 @@ class Checker:
             try:
                 ok = link.sync()
             except OSError as error:
-                link.set("unreachable", "Joined the Wi-Fi but could not reach Deja Vu1 (%s)." % error)
+                link.set("unreachable", "Joined the Wi-Fi but could not reach Deja Vu1: no answer from %s." % error)
                 ok = False
             if ok:
                 link.set("ok", "Reached Deja Vu1.")
@@ -817,8 +850,8 @@ class Checker:
 
     def trouble(self, code, words):
         """Say what is wrong, once and then every ten seconds, so a late page still hears it."""
-        now = time.monotonic()
-        if code != self.problem or now - self.problem_at > 10:
+        now = mono_ms()
+        if code != self.problem or now - self.problem_at > 10000:
             self.problem, self.problem_at = code, now
             emit({"t": "error", "code": code, "message": words})
             print(words)
@@ -850,6 +883,24 @@ class Checker:
             net = {"t": "net"}
             net.update(link.public())
             emit(net)
+        gc.collect()  # a board that runs for weeks keeps its memory in one piece
+
+    def safe_step(self):
+        """step(), except that an unexpected failure is reported and survived. After CRASH_LIMIT in a row the program
+        starts again. Ctrl-C still stops it: it is not an Exception."""
+        try:
+            self.step()
+            self.failures = 0
+        except Exception as error:
+            self.failures += 1
+            gc.collect()
+            again = self.failures >= CRASH_LIMIT
+            self.trouble("crash", "The firmware hit an unexpected problem (%s: %s). %s" % (
+                type(error).__name__, error, "Starting again." if again else "Carrying on."))
+            time.sleep(2)
+            if again:
+                self.failures = 0
+                restart()
 
     def step(self):
         """One pass of the main loop: reach the sensor, take commands, then a reading (or say what is wrong)."""
@@ -865,7 +916,7 @@ class Checker:
             self.hello()
             print("AS7341 found. LEDs on at %d mA, gain %sx." % (self.settings["led_ma"], self.settings["gain"]))
         self.read_commands()
-        started = time.monotonic()
+        started = mono_ms()
         try:
             raw, flags = self.measure()
         except (OSError, RuntimeError) as error:  # the sensor wire came loose, or the chip stopped answering
@@ -884,7 +935,7 @@ class Checker:
             print("#%d nm %s  clear:%d  nir:%d%s" % (self.count, bands, raw["clear"], raw["nir"], note))
         self.net_step(message)
         self.show()
-        while time.monotonic() - started < PERIOD_S:
+        while mono_ms() - started < PERIOD_S * 1000:
             self.read_commands()
             time.sleep(0.05)
 
@@ -901,7 +952,7 @@ def main():
         print("Wi-Fi \"%s\" (from %s), app at %s" %
               (net["ssid"], net["source"], ", ".join(net["server"]) or "nothing yet"))
     while True:
-        checker.step()
+        checker.safe_step()
 
 
 if __name__ == "__main__":

@@ -10,8 +10,12 @@ import io
 import json
 import os
 import re
+import socket
 import sys
+import threading
+import types
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -310,3 +314,140 @@ class WithTheApp(RigCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Survival(RigCase):
+    """A board on a wall charger has nobody to press a button: nothing unexpected may leave it stopped."""
+
+    def safe(self, rig, count=1):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            for _ in range(count):
+                rig.checker.safe_step()
+        return lines_of(out.getvalue())
+
+    def test_an_unexpected_failure_is_reported_once_and_the_readings_carry_on(self):
+        rig = self.make()
+        real = rig.checker.step
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] <= 2:
+                raise ValueError("boom")
+            return real()
+
+        rig.checker.step = flaky
+        protocol, plain = self.safe(rig, 4)
+        errors = [m for m in protocol if m["t"] == "error"]
+        self.assertEqual(len(errors), 1)  # said once, not at every failure
+        self.assertEqual(errors[0]["code"], "crash")
+        self.assertIn("ValueError: boom", errors[0]["message"])
+        self.assertIn("Carrying on", errors[0]["message"])
+        self.assertTrue([m for m in protocol if m["t"] == "reading"])
+        self.assertEqual(rig.checker.failures, 0)
+
+    def test_five_failures_in_a_row_start_the_program_again(self):
+        rig = self.make()
+        reloads = []
+        rig.firmware.supervisor = types.SimpleNamespace(runtime=rig.firmware.supervisor.runtime,
+                                                        reload=lambda: reloads.append(True))
+        rig.checker.step = mock.Mock(side_effect=MemoryError("out of memory"))
+        self.safe(rig, rig.firmware.CRASH_LIMIT - 1)
+        self.assertEqual(reloads, [])
+        self.safe(rig)
+        self.assertEqual(reloads, [True])
+        self.assertEqual(rig.checker.failures, 0)
+
+    def test_the_restart_message_is_said_when_the_limit_is_reached(self):
+        rig = self.make()
+        rig.firmware.supervisor = types.SimpleNamespace(runtime=rig.firmware.supervisor.runtime, reload=lambda: None)
+        rig.checker.step = mock.Mock(side_effect=RuntimeError("bad"))
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            for _ in range(rig.firmware.CRASH_LIMIT):
+                rig.clock.now += 11  # each failure is far enough apart to be said again
+                rig.checker.safe_step()
+        protocol, _ = lines_of(out.getvalue())
+        said = [m["message"] for m in protocol if m["t"] == "error"]
+        self.assertIn("Starting again", said[-1])
+
+    def test_ctrl_c_still_stops_the_program(self):
+        rig = self.make()
+        rig.checker.step = mock.Mock(side_effect=KeyboardInterrupt())
+        with self.assertRaises(KeyboardInterrupt):
+            self.safe(rig)
+
+    def test_the_timers_are_whole_milliseconds_so_they_keep_their_precision_after_weeks(self):
+        rig = self.make()
+        rig.clock.now = 60 * 86400.0  # two months of uptime
+        self.assertIsInstance(rig.firmware.mono_ms(), int)
+        first = rig.firmware.mono_ms()
+        rig.clock.now += 0.25
+        self.assertEqual(rig.firmware.mono_ms() - first, 250)
+
+
+class WhatAnswersOnThatPort(RigCase):
+    """Whatever replies at the configured address, the firmware names it in words and never crashes."""
+
+    def serve(self, reply):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(5)
+        self.addCleanup(listener.close)
+
+        def loop():
+            while True:
+                try:
+                    conn, _ = listener.accept()
+                except OSError:
+                    return
+                with conn:
+                    conn.settimeout(2)
+                    try:
+                        conn.recv(4096)
+                        conn.sendall(reply)
+                    except OSError:
+                        pass
+
+        threading.Thread(target=loop, daemon=True).start()
+        return "127.0.0.1:%d" % listener.getsockname()[1]
+
+    def pico(self, address):
+        env = {"CIRCUITPY_WIFI_SSID": "HomeNet", "CIRCUITPY_WIFI_PASSWORD": "correct-horse",
+               "DV1_SERVER": address, "DV1_PRINTER": "p1"}
+        patch = mock.patch.dict(os.environ, env)
+        patch.start()
+        self.addCleanup(patch.stop)
+        return self.make()
+
+    def steps(self, rig, count=2):
+        with contextlib.redirect_stdout(io.StringIO()):
+            for _ in range(count):
+                rig.checker.safe_step()
+        return rig.checker.link
+
+    def test_another_program_answering_with_json_that_is_not_ours_is_named(self):
+        body = b"[1, 2, 3]"
+        reply = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n" % len(body) + body
+        link = self.steps(self.pico(self.serve(reply)))
+        self.assertEqual(link.state, "refused")
+        self.assertIn("not Deja Vu1", link.message)
+
+    def test_an_answer_that_is_not_http_at_all_is_unreachable_not_a_crash(self):
+        link = self.steps(self.pico(self.serve(b"SSH-2.0-OpenSSH_9.6\r\n\r\n")))
+        self.assertEqual(link.state, "unreachable")
+
+    def test_a_broken_status_line_and_a_broken_length_do_not_crash(self):
+        link = self.steps(self.pico(self.serve(b"HTTP/1.1 abc\r\nContent-Length: x\r\n\r\n{}")))
+        self.assertEqual(link.state, "unreachable")
+        body = b"{}"
+        reply = b"HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\n" + body
+        link = self.steps(self.pico(self.serve(reply)))
+        self.assertEqual(link.state, "refused")
+
+    def test_the_commands_in_a_reply_must_be_a_list_of_objects(self):
+        rig = self.make()
+        link = rig.checker.link
+        self.assertEqual(link.answer(200, {"server_time": 1900000000, "commands": "set gain 512"}), [])
+        self.assertEqual(link.answer(200, {"server_time": 1900000000, "commands": ["x", 3, {"cmd": "set"}]}),
+                         [{"cmd": "set"}])

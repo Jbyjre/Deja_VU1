@@ -164,7 +164,7 @@ stops the program.
 |---|---|---|
 | `hello` | on start, on request, when the sensor comes up | `protocol`, `firmware`, `sensor_ready`, the identity (`device_id`, `channel_id`, `sensor_id`, `sensor_model`), `settings` and `net` (the Wi-Fi's state without its password) |
 | `reading` | every two seconds | `seq`, `raw`, `quality_flags`, `settings` and the identity: everything the app's reading needs except `captured_at` |
-| `error` | on a fault, then every ten seconds | `code` (`wiring`, `no_sensor`, `library`, `sensor_lost`) and a sentence |
+| `error` | on a fault, then every ten seconds | `code` (`wiring`, `no_sensor`, `library`, `sensor_lost`, `crash`) and a sentence. `crash` means the firmware hit something unexpected and carried on; after five in a row it starts again |
 | `ack`, `autogain` | after a command | `cmd`, `ok`, `message` and the command's own results |
 | `net` | when the Wi-Fi state changes | the same facts as `net` in `hello` |
 

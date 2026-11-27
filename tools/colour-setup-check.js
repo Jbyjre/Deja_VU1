@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Browser check of the colour checker's setup window, end to end on this computer.
  *
- *   node tools/colour-setup-check.js [--shots <folder>] [--only wifi|usb|toml]
+ *   node tools/colour-setup-check.js [--shots <folder>] [--only wifi|usb|toml|first-run]
  *
  * Starts the real server and a stand-in printer (tools/stand-in-printer.py), then the real firmware file as a
  * stand-in Pico (tools/colour_pico_sim.py) that posts over a real socket, and drives the setup window in Chromium:
@@ -153,6 +153,45 @@ async function main() {
       check(/32 characters/.test(out.long), 'a Wi-Fi name over 32 bytes is refused in words');
     }
 
+    if (!only || only === 'first-run') {
+      /* The module starts switched off: the window says so and turns it on in one press. */
+      await post('/api/modules/color_check/toggle', { enabled: false });
+      await page.evaluate(() => ColourSetup.open(null));
+      await page.locator('#colour-setup[open]').waitFor();
+      await page.locator('#cs-module-live [data-turn-on]').waitFor({ timeout: 15000 });
+      check(/switched off/.test(await page.locator('#cs-module-live').innerText()) && await page.locator('#cs-module-live').isVisible(), 'with the module off the top of the window says so and offers Turn it on');
+      const quiet = await page.locator('#cs-problems').innerText();
+      check(!/printer|address/i.test(quiet) && /Looking/.test(await page.locator('#cs-addresses').innerText()), 'a window opened with the module off does not complain about an address or a printer nobody could have chosen');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-setup-module-off.png') });
+      await page.locator('#cs-module-live [data-turn-on]').click();
+      await page.waitForFunction(() => !document.querySelector('#cs-module-live [data-turn-on]'), null, { timeout: 15000 });
+      check(await page.locator('#colour-setup').evaluate(d => d.open), 'the window stays open after the switch is turned on');
+      check(/Waiting for the Pico/.test(await page.locator('#cs-find-live').innerText()), 'after the switch the window waits for the Pico');
+      await page.locator('#colour-setup-close').click();
+
+      /* A VPN or a virtual adapter can put a wrong address first, so up to three of this computer's addresses are offered ticked. */
+      await page.route('**/api/colorcheck/connection*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        printer_id: id, physical: true, port: 8000, addresses: ['10.8.0.2:8000', '192.168.1.23:8000', '172.20.48.1:8000', '172.17.0.1:8000'],
+        name: 'laptop.local:8000', device_lock: false }) }));
+      await page.evaluate(() => ColourSetup.open(null));
+      await page.waitForFunction(() => document.querySelectorAll('#cs-addresses input[type=checkbox]').length === 5, null, { timeout: 15000 });
+      const ticks = await page.$$eval('#cs-addresses input[type=checkbox]', boxes => boxes.map(b => b.checked));
+      check(JSON.stringify(ticks) === '[true,true,true,false,false]', 'three of four home-network addresses start ticked, the fourth and the .local name do not');
+      await page.fill('#cs-ssid', 'HomeNet');
+      await page.fill('#cs-pass', 'correct-horse');
+      await page.waitForTimeout(200);
+      const file = await page.locator('#cs-toml').innerText();
+      check(file.includes('DV1_SERVER = "10.8.0.2:8000, 192.168.1.23:8000, 172.20.48.1:8000"'), 'the file lists the ticked addresses in order');
+      await page.fill('#cs-address-typed', '1.1.1.1:8000, 2.2.2.2:8000');
+      await page.waitForTimeout(200);
+      check(/at most four addresses/.test(await page.locator('#cs-problems').innerText()) && await page.locator('#cs-download').isDisabled(), 'five addresses are refused in words, because the Pico keeps four');
+      await page.fill('#cs-address-typed', '');
+      await page.fill('#cs-ssid', '');
+      await page.fill('#cs-pass', '');
+      await page.locator('#colour-setup-close').click();
+      await page.unroute('**/api/colorcheck/connection*');
+    }
+
     if (!only || only === 'wifi') {
       /* The Pico on Wi-Fi: it posts before it is assigned, so the app lists it. */
       const wifiPico = startPico({ CIRCUITPY_WIFI_SSID: 'HomeNet', CIRCUITPY_WIFI_PASSWORD: 'correct-horse',
@@ -246,6 +285,21 @@ async function main() {
       const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
       check(/^#[0-9a-f]{6}$/.test(hex) && r > b + 80 && r > g, `an orange spool reads as an orange (${hex})`);
       if (shots) await page.screenshot({ path: path.join(shots, 'colour-setup-1366-measured.png') });
+
+      /* The report for a message: what the app and the Pico say, and never the Wi-Fi name or the password. */
+      await page.fill('#cs-ssid', 'HomeNet');
+      await page.fill('#cs-pass', 'correct-horse');
+      await page.locator('summary', { hasText: 'If nothing works' }).click();
+      await page.locator('#cs-report').scrollIntoViewIfNeeded();
+      await page.locator('#cs-report-text').evaluate(el => { el.hidden = true; });
+      await page.locator('#cs-report').click();
+      await page.waitForFunction(() => !document.getElementById('cs-report-text').hidden, null, { timeout: 15000 });
+      const message = await page.locator('#cs-report-text').innerText();
+      check(/Sensors with a head: 1/.test(message) && /- T0: pico-deadbeef00000001 \/ inlet-0 \/ as7341-1; reading/.test(message) && /via wifi -58 dBm, firmware 1\.0\.1/.test(message), 'the report names the sensor, how it connects, its signal and its firmware');
+      check(/Right colour loaded\? switched on/.test(message) && /Window steps: connect ok, find ok, test (ok|todo), gain ok, cal ok, done ok/.test(message) && /the colour checker firmware this build offers: 1\.0\.1/.test(message), 'the report says the module is on, which steps are done and which firmware this build offers');
+      check(!/correct-horse|HomeNet/.test(message), 'the report holds neither the Wi-Fi name nor the password');
+      if (shots) await page.screenshot({ path: path.join(shots, 'colour-setup-report.png') });
+      await page.fill('#cs-ssid', 'HomeNet');
 
       /* The bench: three readings of a spool whose colour is known, the file for the report tool, and the report. */
       await page.locator('#cs-bench summary').click();
