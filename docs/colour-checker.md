@@ -2,7 +2,7 @@
 
 A small sensor reads the colour of the filament in a spool's tube and Deja Vu1 compares it with the colour your print file expects. A Raspberry Pi Pico W sends the readings to Deja Vu1 over your home Wi-Fi, or down a USB cable.
 
-**Where it stands.** The firmware, the setup window, the holder and the bench report are built and tested against stand-ins (see [What has been tested](#what-has-been-tested)). The two boards passed an arrival test on 25 November 2026. On 27 November 2026 the firmware file also ran under MicroPython (the interpreter CircuitPython is built on) against the real server, its calls into CircuitPython and into Adafruit's sensor library were compared with their source, and a stand-in Pico reached the server over a network address with the device lock on. The firmware has not run on a real Pico W yet, the holder has not been printed, and no spool has been measured. No accuracy figure exists and Deja Vu1 quotes none.
+**Where it stands.** The firmware, the setup window, the holder and the bench report are built and tested against stand-ins (see [What has been tested](#what-has-been-tested)). The two boards passed an arrival test on 25 November 2026. On 27 November 2026 the firmware file also ran under MicroPython (the interpreter CircuitPython is built on) against the real server. A test compared its calls into CircuitPython and into Adafruit's sensor library with their source, and a stand-in Pico reached the server at a network address with the device lock on. The firmware has not run on a real Pico W yet, the holder has not been printed, and no spool has been measured. No accuracy figure exists and Deja Vu1 quotes none.
 
 The checker gives advice. Confirm Print shows the file's colour, the printer's report and the sensor's reading side by side, asks you to look at the spool when they disagree, and never blocks a start.
 
@@ -77,7 +77,7 @@ Your router can give this computer a new address after a restart. When readings 
 
 The Pico calls Deja Vu1 at this computer's address on your home network, so this computer's firewall must let that call in. Deja Vu1 checks the Host name, the Origin and the optional device lock on every request, as it does for the dashboard. It does not check which network a caller is on, so a firewall rule that names your own network (the `netsh` line below does) keeps it off the rest of the internet.
 
-**Test it first with a phone.** Join the phone to the same Wi-Fi and open `http://` followed by this computer's address from the setup window (for example `http://192.168.1.23:8000`). If the dashboard opens, the Pico can reach it too. With the device lock on, the phone has to pair first. If the page does not open, the firewall or the address is the cause, not the Pico.
+**Test it first with a phone.** Join the phone to the same Wi-Fi and open `http://` followed by this computer's address from the setup window (for example `http://192.168.1.23:8000`). If the dashboard opens, the Pico can reach it too. With the device lock on, the phone has to pair first. If the page does not open, the cause is the firewall or the address.
 
 **Windows.** Microsoft's support page says a network you first join in Windows 11 is set to Public, and recommends keeping it Public. If Windows asked whether Python may use your networks, allow it for the kind of network your Wi-Fi is set to. If the Pico still cannot get through (the phone test fails), use either way:
 
@@ -87,7 +87,7 @@ The Pico calls Deja Vu1 at this computer's address on your home network, so this
 netsh advfirewall firewall add rule name="Deja Vu1 colour checker" dir=in action=allow protocol=TCP localport=8000 profile=private,public remoteip=localsubnet
 ```
 
-- Or set the network to Private: Settings, Network & internet, Wi-Fi, the network you are connected to, Network profile type, Private network. Microsoft notes that a Private network makes your computer discoverable to other devices and allows file and printer sharing, so do it only on a network you trust.
+- Or set the network to Private: Settings, Network & internet, Wi-Fi, the network you are connected to, Network profile type, Private network. Microsoft says a Private network makes your computer discoverable to other devices and allows file and printer sharing, so use it only on a network you trust.
 
 To remove the rule later: `netsh advfirewall firewall delete rule name="Deja Vu1 colour checker"`.
 
@@ -95,7 +95,7 @@ To remove the rule later: `netsh advfirewall firewall delete rule name="Deja Vu1
 
 **Linux.** With `ufw`, allow your own network to reach the port, using your network's range: `sudo ufw allow from 192.168.1.0/24 to any port 8000 proto tcp`.
 
-The `netsh` line and the Windows setting were checked against Microsoft's documentation on 27 November 2026 (the `add rule` reference lists `localport`, `profile` and `remoteip=localsubnet`; the support page on public and private networks gives the Settings path). The macOS and Linux lines come from those systems' usual behaviour and were not checked. None of the steps was tried on its own system here.
+Microsoft's documentation covers the `netsh` line and the Windows setting (read on 27 November 2026): the `add rule` reference lists `localport`, `profile` and `remoteip=localsubnet`, and the support page on public and private networks gives the Settings path. Nobody has checked the macOS and Linux lines, which describe how those systems usually behave, and nobody has tried any of the steps on its own system.
 
 ## Step 3: or use the USB cable
 
