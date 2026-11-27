@@ -199,7 +199,11 @@ code can sit in more than one part: search the family (`grep -n "function render
   A switched-off module shows a notice at the top (`#cs-module-live`; its button uses the global `[data-turn-on]` handler) and the address and printer problems wait until the app has answered
   (`problems(v, known)`; the module-off answer is not connection info). Up to three of this computer's addresses start ticked (the Pico keeps four, `problems` refuses more). **Copy the report**
   (`diagnosticsText`, `collectDiagnostics`) writes plain English for a message and blanks the Wi-Fi name, password and pairing code wherever they appear: add every new private field to `secrets`.
-  `tools/colour-setup-check.js` drives all of it with the real firmware as a stand-in Pico and a fake `navigator.serial`.
+  **The setup is offered in four places, all with the module off or demo data on** (`#colour-setup-bar` is never hidden any more): the toolbar of the Filament screen (`ACTIONS.filament` in pagebar.js),
+  the Right colour loaded? card (`#colour-setup-open`), the search bar (`ACTIONS` in finder.js) and Settings, Optional extras (a `[data-colour-setup]` button on the colour checker row; one document-level
+  handler in colour-setup.js opens the window for anything carrying that attribute). A new place that offers the setup only needs that attribute.
+  `tools/colour-setup-check.js` drives all of it with the real firmware as a stand-in Pico and a fake `navigator.serial`. **Keep diagnostics out of it** (request listeners, a fault handler, extra
+  logging): they changed the timing enough to make the Pico steps fail about half the time, and the untouched script passed 3 of 3 (27 November).
 - `printer-page.js` + `printer.css`: the Printer page, the Overview cards, the camera view (`.pcam`,
   at most five pictures a second, only while visible) and Preferences.
 - `workshop.js`: live WebSocket with a polling fallback (asks once a second and retries the WebSocket

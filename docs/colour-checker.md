@@ -4,6 +4,8 @@ A small sensor reads the colour of the filament in a spool's tube and Deja Vu1 c
 
 **Where it stands.** The firmware, the setup window, the holder and the bench report are built and tested against stand-ins (see [What has been tested](#what-has-been-tested)). The two boards passed an arrival test on 25 November 2026. On 27 November 2026 the firmware file also ran under MicroPython (the interpreter CircuitPython is built on) against the real server. A test compared its calls into CircuitPython and into Adafruit's sensor library with their source, and a stand-in Pico reached the server at a network address with the device lock on. The firmware has not run on a real Pico W yet, the holder has not been printed, and no spool has been measured. No accuracy figure exists and Deja Vu1 quotes none.
 
+**Where to find the setup.** Open Maintenance, then Filament, and press the blue **Set up the colour checker** button in the toolbar. The same button is on the Right colour loaded? card, on the **Set up** button of the Right colour loaded? row in Settings, Optional extras, and in the search bar: press Ctrl+K and type colour checker. The button is there with the module off and with demo data on. The window then tells you what is missing and offers to turn the module on.
+
 The checker gives advice. Confirm Print shows the file's colour, the printer's report and the sensor's reading side by side, asks you to look at the spool when they disagree, and never blocks a start.
 
 ## What you need
@@ -20,7 +22,7 @@ The checker gives advice. Confirm Print shows the file's colour, the printer's r
 
 1. Deja Vu1 has to be running on this computer whenever the Pico sends readings. With the app closed, the Pico blinks twice and waits.
 2. Add your printer in Deja Vu1 (Printers). The Pico's settings carry that printer's id, and a demo printer does not work.
-3. Switch on **Right colour loaded?** (Maintenance, Filament & colour, **Turn on**, or Settings, Optional extras). The setup window shows a **Turn it on** button at its top while the module is off.
+3. Switch on **Right colour loaded?** (Maintenance, Filament, **Turn on**, or Settings, Optional extras). You can skip this: the setup window shows a **Turn it on** button at its top while the module is off.
 4. Your Wi-Fi needs a 2.4 GHz name. A Pico W cannot join a 5 GHz-only network.
 5. Let the Pico reach this computer through its firewall: [the section below](#let-the-pico-reach-this-computer) has the steps and a way to test it with a phone.
 
